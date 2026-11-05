@@ -1,4 +1,4 @@
-SERVICE_NAME="app" # The name of your Spring Boot service in docker-compose.yml
+SERVICE_NAME="app" # The name of your Spring Boot service in docker-compose.local.yaml
 #!/bin/bash
 
 # Exit immediately if a command exits with a non-zero status.
@@ -7,7 +7,7 @@ set -e
 # Define the path to your Docker Compose file and environment file
 DOCKER_COMPOSE_FILE="docker/docker-compose.local.yaml"
 ENV_FILE=".env"
-SERVICE_NAME="app" # The name of your Spring Boot service in docker-compose.yml
+SERVICE_NAME="app" # The name of your Spring Boot service in docker-compose.local.yaml
 
 echo "Stopping and removing the '$SERVICE_NAME' container..."
 # Stop and remove the existing 'app' container

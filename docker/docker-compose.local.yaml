@@ -35,17 +35,11 @@ services:
   front:
     build:
       context: ../front
-      dockerfile: Dockerfile
+      dockerfile: dockerfile
     container_name: react-frontend
+    # Production build served by nginx on port 80 inside the container
     ports:
-      - "3000:3000"
-    volumes:
-      - ../front:/app
-      - /app/node_modules
-    environment:
-      - NODE_ENV=development
-      - CHOKIDAR_USEPOLLING=true
-      - REACT_APP_API_URL=http://app:8080/api/v1
+      - "3000:80"
     networks:
       - my-app-network
     depends_on:

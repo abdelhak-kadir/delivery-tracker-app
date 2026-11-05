@@ -3,7 +3,8 @@ import axios from 'axios';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL:  'http://localhost:8080/api/v1',
+  // Relative by default: nginx (container) or the CRA dev-server "proxy" forwards /api to the backend.
+  baseURL: process.env.REACT_APP_API_URL || '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },

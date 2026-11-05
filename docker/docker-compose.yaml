@@ -31,15 +31,11 @@ services:
     # to speed up the workflow.
     build:
       context: ../front
-      dockerfile: Dockerfile
-    container_name: angular-frontend
+      dockerfile: dockerfile
+    container_name: react-frontend
+    # Production build served by nginx on port 80 inside the container
     ports:
-      - "4200:4200"
-    volumes:
-      - ../front:/app
-      - /app/node_modules
-    environment:
-      - NODE_ENV=development
+      - "3000:80"
     networks:
       - my-app-network
     depends_on:

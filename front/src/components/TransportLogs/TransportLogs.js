@@ -1,5 +1,5 @@
 // src/components/TransportLogs/TransportLogs.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -131,17 +131,12 @@ const TransportLogs = () => {
     }
   ];
 
-  // Load initial data
-  useEffect(() => {
-    
-    fetchInitialData();
+  // Show notification
+  const showNotification = useCallback((message, severity = 'success') => {
+    setNotification({ open: true, message, severity });
   }, []);
 
-  useEffect(() => {
-    fetchLogs();
-  }, [page, size]);
-
-  const fetchInitialData = async () => {
+  const fetchInitialData = useCallback(async () => {
     try {
       const [clientsRes, driversRes] = await Promise.all([
         clientsAPI.getAll(0, 100),
@@ -153,9 +148,13 @@ const TransportLogs = () => {
     } catch (error) {
       showNotification('Error fetching clients and drivers', 'error');
     }
-  };
+  }, [showNotification]);
 
-  const fetchLogs = async () => {
+  useEffect(() => {
+    fetchInitialData();
+  }, [fetchInitialData]);
+
+  const fetchLogs = useCallback(async () => {
     try {
       setLoading(true);
       const response = await transportLogsAPI.getAll(page, size);
@@ -167,7 +166,11 @@ const TransportLogs = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, size, showNotification]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
 
   // Dialog handlers
   const handleCreate = () => {
@@ -303,11 +306,6 @@ const TransportLogs = () => {
     if (formErrors[field]) {
       setFormErrors({ ...formErrors, [field]: null });
     }
-  };
-
-  // Show notification
-  const showNotification = (message, severity = 'success') => {
-    setNotification({ open: true, message, severity });
   };
 
   return (

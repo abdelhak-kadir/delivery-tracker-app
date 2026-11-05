@@ -21,6 +21,8 @@ permissions:
 jobs:
   plan:
     name: Security Scan + Plan
+    # Scheduled runs are drift detection only (see drift-detect); never plan/apply from them.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -83,7 +85,7 @@ jobs:
             | tar xz && sudo mv conftest /usr/local/bin/
 
       - name: Run Conftest on Terraform plan
-        run: conftest test --policy policy tfplan.json
+        run: conftest test --policy policy --namespace terraform.security tfplan.json
 
       # FIXED: Use environment variable in artifact name
       - name: Upload Plan Artifact
@@ -98,7 +100,8 @@ jobs:
     name: Apply
     runs-on: ubuntu-latest
     needs: plan
-    if: github.ref == 'refs/heads/main'
+    # Apply only on push to main or a manual dispatch from main; never on schedule.
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     environment: ${{ github.event.inputs.environment || 'staging' }}
     defaults:
       run:
@@ -198,19 +201,22 @@ jobs:
 
       # BONUS: Add production drift detection
       - name: Select Workspace (production)
+        id: ws-prod
         env:
           ENVIRONMENT: "production"
         run: |
           if terraform workspace list | grep -q "^[[:space:]]*$ENVIRONMENT[[:space:]]*$"; then
             echo "✅ Selecting existing workspace: $ENVIRONMENT"
             terraform workspace select "$ENVIRONMENT"
+            echo "exists=true" >> $GITHUB_OUTPUT
           else
             echo "⚠️  Production workspace does not exist, skipping drift detection"
-            exit 0
+            echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Detect Drift (production)
         id: drift-prod
+        if: steps.ws-prod.outputs.exists == 'true'
         continue-on-error: true
         run: |
           set +e

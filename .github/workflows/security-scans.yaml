@@ -88,8 +88,8 @@ jobs:
           sudo mv ./bin/trivy /usr/local/bin/
 
       # Filesystem scan
-      - name: Trivy FS Scan
-        run: trivy fs --exit-code 1 --severity HIGH,CRITICAL --format sarif -o trivy-fs.sarif . || true
+      - name: Trivy FS Scan (SARIF report)
+        run: trivy fs --exit-code 0 --severity HIGH,CRITICAL --format sarif -o trivy-fs.sarif .
 
       - name: Upload FS SARIF
         uses: github/codeql-action/upload-sarif@v3
@@ -97,6 +97,9 @@ jobs:
         with:
           sarif_file: trivy-fs.sarif
           category: trivy-fs
+
+      - name: Trivy FS Gate (fail on CRITICAL)
+        run: trivy fs --exit-code 1 --severity CRITICAL --ignore-unfixed .
 
       # Docker login (separated from scanning)
       - name: Log in to GitHub Container Registry

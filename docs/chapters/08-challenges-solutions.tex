@@ -1,0 +1,160 @@
+%========================================================================================
+%   Chapter 8 — Challenges & Solutions
+%========================================================================================
+\chapter{Challenges \& Solutions}
+
+This chapter highlights the main technical and operational challenges encountered during the project lifecycle and the strategies adopted to overcome them.  
+Each problem is presented with its root cause, corrective actions, and impact on the final system’s quality and security posture.
+
+%------------------------------------------------
+\section{Development Challenges}
+
+\begin{itemize}
+    \item \textbf{JWT Authentication Conflicts:}  
+    Early Spring Security configurations introduced cyclic dependencies between authentication beans and user details loading.  
+    \textbf{Solution:} Implemented a custom \texttt{SimpleUserDetailsService} leveraging BCrypt password hashing and refactored beans to load through environment-based credentials, breaking circular injection chains.
+
+    \item \textbf{Foreign Key Constraint Errors:}  
+    CRUD operations involving \texttt{Client}, \texttt{Driver}, and \texttt{TransportLog} entities failed due to cascading deletions.  
+    \textbf{Solution:} Annotated transactional service methods with \texttt{@Transactional} and added explicit entity loading to preserve relational integrity.
+
+    \item \textbf{React Authentication State Handling:}  
+    Token expiration caused inconsistent authentication states between components.  
+    \textbf{Solution:} Introduced a centralized \texttt{AuthContext} and Axios interceptors to refresh tokens automatically and perform clean logout on 401 responses.
+
+    \item \textbf{DTO–Entity Mapping Complexity:}  
+    Manual mapping generated redundant code.  
+    \textbf{Solution:} Adopted \texttt{MapStruct} to automate DTO conversions, improving maintainability.
+\end{itemize}
+
+%------------------------------------------------
+\section{Infrastructure \& Deployment Challenges}
+
+\begin{itemize}
+    \item \textbf{Container Startup Dependencies:}  
+    Spring Boot containers started before PostgreSQL initialization, causing connection errors.  
+    \textbf{Solution:} Added Docker health checks and conditional startup logic:
+\begin{verbatim}
+db:
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+app:
+  depends_on:
+    db:
+      condition: service_healthy
+\end{verbatim}
+
+    \item \textbf{Large Image Sizes:}  
+    Dependencies inflated container size up to 500 MB.  
+    \textbf{Solution:} Multi-stage Docker builds reduced final image size by 60\,\%, keeping runtime layers minimal and secure.
+
+    \item \textbf{Environment Configuration Management:}  
+    Managing separate credentials for staging and production led to inconsistencies.  
+    \textbf{Solution:} Introduced environment-specific Spring profiles and Docker-injected environment variables for JWT, database URLs, and secrets.
+
+    \item \textbf{Terraform State Conflicts:}  
+    Parallel executions created drift between environments.  
+    \textbf{Solution:} Migrated Terraform state to a remote backend with locking enabled to guarantee atomic operations.
+\end{itemize}
+
+%------------------------------------------------
+\section{Security Challenges}
+
+\begin{itemize}
+    \item \textbf{Secret Management:}  
+    Early prototypes used plaintext JWT secrets and credentials.  
+    \textbf{Solution:} Moved all secrets to environment variables and encrypted vault files managed by Ansible Vault (\texttt{group\_vars/staging/vault.yml}).
+
+    \item \textbf{API Security Testing:}  
+    Risk of leaking credentials during automated tests.  
+    \textbf{Solution:} Created a dedicated \texttt{TestSecurityConfig} with mock authentication providers, isolating tests from real secrets.
+
+    \item \textbf{Validation Error Disclosure:}  
+    Raw exceptions exposed internal details to clients.  
+    \textbf{Solution:} Added a global \texttt{@ControllerAdvice} handler to sanitize responses and standardize error formats.
+
+    \item \textbf{Firewall Misconfiguration:}  
+    Backend ports were unintentionally accessible publicly during initial tests.  
+    \textbf{Solution:} Re-applied UFW and DigitalOcean Cloud Firewall rules, restricting API access to frontend and bastion hosts only.
+\end{itemize}
+
+%------------------------------------------------
+\section{Testing \& CI/CD Challenges}
+
+\begin{itemize}
+    \item \textbf{Database Testing Isolation:}  
+    Integration tests risked mutating production data.  
+    \textbf{Solution:} Configured tests to use an in-memory H2 database and mocked repositories with Mockito for pure unit testing.
+
+    \item \textbf{Security Flow Testing:}  
+    Complex JWT-based filters required full authentication simulation.  
+    \textbf{Solution:} Implemented \texttt{MockMvc} integration tests to validate access rules and token lifecycles.
+
+    \item \textbf{CI/CD Workflow Failures:}  
+    Initial GitHub Actions failed on Terraform or Ansible steps due to secret misconfiguration.  
+    \textbf{Solution:} Segmented workflows (build/test, scan, deploy) with environment-specific secrets and conditional job triggers for staging/production.
+\end{itemize}
+
+%------------------------------------------------
+\section{Performance Optimization Solutions}
+
+\begin{itemize}
+    \item \textbf{API Optimization:}  
+    Implemented pagination and projection across all endpoints, reducing payload sizes.  
+
+    \item \textbf{Query Tuning:}  
+    Optimized JPA queries and indexed primary keys, cutting average DB response to 67 ms.  
+
+    \item \textbf{Startup Speed:}  
+    Cached Maven dependencies and precompiled layers, reducing container startup to 18 s.  
+
+    \item \textbf{Static Resource Caching:}  
+    Configured Nginx caching headers, improving page-load time by 45\,\%.
+\end{itemize}
+
+%------------------------------------------------
+\section{Organizational \& Workflow Challenges}
+
+\begin{itemize}
+    \item \textbf{Collaboration and Version Control:}  
+    Merging Terraform and Ansible updates between developers introduced conflicts.  
+    \textbf{Solution:} Adopted Git branching strategy (\texttt{features/back}, \texttt{features/front}, \texttt{infra/}) with pull request reviews.
+
+    \item \textbf{Documentation Synchronization:}  
+    Rapid infrastructure iterations caused outdated diagrams.  
+    \textbf{Solution:} Automated regeneration of PlantUML diagrams and inventory files through Makefile targets (\texttt{make docs}).
+
+    \item \textbf{Remote Deployment Connectivity:}  
+    SSH agent forwarding failed in early Ansible executions.  
+    \textbf{Solution:} Enabled ProxyJump through bastion and verified agent forwarding using \texttt{ssh -T git@github.com} tests before deployment.
+\end{itemize}
+
+%------------------------------------------------
+\section{Key Results and Impact}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Metric} & \textbf{Before} & \textbf{After} \\ \hline
+Container Image Size & 500 MB & 200 MB \\
+API Response Time & 800 ms & 245 ms \\
+Security Vulnerabilities & 12 issues & 0 critical \\
+Test Coverage & 60 \% & 95 \% \\
+Deployment Time & 15 min & 8 min \\ \hline
+\end{tabular}
+\caption{Resolution Outcomes and Performance Improvements}
+\end{table}
+
+%------------------------------------------------
+\section{Summary of Lessons Learned}
+
+The project’s challenges revealed the value of \textbf{DevSecOps integration} throughout the lifecycle:
+\begin{itemize}
+    \item Early IaC adoption prevented configuration drift across environments.  
+    \item Security-by-design minimized vulnerabilities without slowing delivery.  
+    \item Automated CI/CD pipelines increased reliability and developer confidence.  
+    \item Documentation and modularity accelerated debugging and maintenance.  
+\end{itemize}
+
+The systematic resolution of these challenges led to a robust, secure, and reproducible system architecture that can scale easily and serve as a blueprint for future DevSecOps projects.

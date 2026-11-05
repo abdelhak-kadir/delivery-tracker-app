@@ -1,0 +1,34 @@
+\begin{figure}[H]
+\centering
+\begin{adjustbox}{max width=\linewidth}
+\begin{tikzpicture}[
+    stage/.style={rectangle,rounded corners,draw=Eblue,fill=Ecyan!10,
+                  minimum width=2.6cm,minimum height=1cm,align=center,font=\sffamily\small},
+    tool/.style={rectangle,draw=Eblue!70,fill=white,minimum width=2.6cm,
+                 align=center,font=\sffamily\scriptsize,inner sep=3pt},
+    arrow/.style={->,>=Stealth,thick,Eblue}
+]
+\node[stage] (commit) {Commit /\\Pull request};
+\node[stage,right=1.0cm of commit] (build) {Build \&\\unit tests};
+\node[stage,right=1.0cm of build] (image) {Container\\image};
+\node[stage,right=1.0cm of image] (plan) {Terraform\\plan};
+\node[stage,right=1.0cm of plan] (deploy) {Deploy\\(Ansible / SSH)};
+\draw[arrow] (commit) -- (build);
+\draw[arrow] (build) -- (image);
+\draw[arrow] (image) -- (plan);
+\draw[arrow] (plan) -- (deploy);
+
+\node[tool,below=0.7cm of commit] (t1) {Gitleaks\\(secrets)};
+\node[tool,below=0.2cm of t1] (t2) {Semgrep\\(SAST)};
+\node[tool,below=0.7cm of build] (t3) {Dependency-Check\\npm audit (SCA)};
+\node[tool,below=0.2cm of t3] (t4) {Trivy fs\\(SCA / misconfig.)};
+\node[tool,below=0.7cm of image] (t5) {Trivy image\\(OS + libraries)};
+\node[tool,below=0.7cm of plan] (t6) {tfsec, Checkov\\(IaC scanning)};
+\node[tool,below=0.2cm of t6] (t7) {Conftest / OPA\\(policy on plan)};
+\foreach \s/\t in {commit/t1,build/t3,image/t5,plan/t6}
+  \draw[dashed,Eblue] (\s) -- (\t);
+\end{tikzpicture}
+\end{adjustbox}
+\caption{Placement of the security scanners in the delivery pipeline of the project}
+\label{fig:scanner-placement}
+\end{figure}

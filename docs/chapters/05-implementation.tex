@@ -1,0 +1,922 @@
+%========================================================================================
+%   Chapter 5 -- Implementation (merged from the former chapters 5 and 6)
+%   Listings are generated verbatim from the repository files named in their captions.
+%========================================================================================
+\chapter{Implementation}
+\label{ch:implementation}
+
+This chapter describes how the architecture and the pipeline designed in the design chapter were realised in code. It follows the order in which the system was built: the development environment and the repository layout (Section~\ref{sec:impl-env}), the Spring Boot backend (Section~\ref{sec:impl-back}), the React frontend (Section~\ref{sec:impl-front}), the container images (Section~\ref{sec:impl-docker}), the Terraform infrastructure (Section~\ref{sec:impl-terraform}), the Ansible configuration (Section~\ref{sec:impl-ansible}) and, finally, the GitHub Actions workflows that tie these parts together (Section~\ref{sec:impl-cicd}). Measurements and scan results are presented in the results chapter.
+
+All listings are verbatim excerpts of the files named in their captions. To keep them short, import statements and trailing line comments are omitted, and elided passages are marked with a comment containing three dots.
+
+%========================================================================================
+\section{Development Environment and Repository Layout}
+\label{sec:impl-env}
+
+\subsection{Technology Baseline}
+
+The backend is a Java~21 application built with Maven (through the Maven wrapper \texttt{mvnw}) on Spring Boot~3.5.6. The main dependencies are Spring Web, Spring Data JPA with the PostgreSQL driver, Spring Security, Bean Validation, the \texttt{jjwt}~0.12.5 library for JSON Web Tokens, Lombok, and \texttt{springdoc-openapi-starter-webmvc-ui}~2.8.9 for the OpenAPI description and Swagger~UI. The Actuator starter exposes the health endpoint. H2 and \texttt{spring-security-test} are declared for the test scope, and the JaCoCo Maven plugin (0.8.12) is configured to produce coverage reports. The frontend is a Create React App project using React~19.1, Material~UI~7.3, React Router~7 and Axios. The database is PostgreSQL~16.
+
+\subsection{Repository Layout}
+
+The whole system lives in a single repository, organised by concern (Listing~\ref{lst:repo-tree}). The directory \texttt{docs/} holds this report.
+
+\begin{lstlisting}[language=bash, basicstyle=\ttfamily\scriptsize, caption={Top-level layout of the repository (abridged)}, label={lst:repo-tree}]
+back/        Spring Boot REST API (Dockerfile, pom.xml, src/main, src/test)
+front/       React single-page application (dockerfile, nginx.conf, src/)
+docker/      Docker Compose files (local, backend-only, full stack)
+infra/       Terraform root module, modules/stack, policy/*.rego (OPA)
+ansible/     playbooks/, roles/, group_vars/, inventories/, scripts/, Makefile
+.github/     workflows/ (CI, security scans, Terraform, CD), drift-template.md
+.env.example Template of the variables expected in the local .env file
+start.sh, stop.sh, restart-app.sh   Helper scripts around Docker Compose
+\end{lstlisting}
+
+\subsection{Configuration and Local Execution}
+
+Runtime configuration is injected through environment variables, never committed. The file \texttt{.env.example} documents the seven variables the application needs: the database name, user and password (\texttt{POSTGRES\_DB}, \texttt{POSTGRES\_USER}, \texttt{POSTGRES\_PASSWORD}), the signing secret of the tokens (\texttt{JWT\_SECRET}), the credentials of the application user (\texttt{APP\_USER\_USERNAME}, \texttt{APP\_USER\_PASSWORD}) and the list of origins allowed by CORS (\texttt{APP\_CORS\_ALLOWED\_ORIGINS}, which defaults to the two local development origins). Developers copy it to a local \texttt{.env} file, which is ignored by Git.
+
+Spring configuration is split into a common file and two profiles. \texttt{application.yaml} holds only the application name and the Actuator exposure (the health endpoint alone is exposed). The \texttt{local} profile points the datasource at \texttt{localhost:5432} and lets Hibernate update the schema; the \texttt{docker} profile defines the application user and token settings from the environment, the datasource being supplied by Compose variables. In both, the token lifetime is set to 1\,800\,000~ms, i.e.\ 30 minutes. No further profiles exist: the staging and production environments differ in their infrastructure and Ansible variables, not in Spring profiles.
+
+Two ways of running the system locally are provided. The script \texttt{back/start-local.sh} loads \texttt{.env} and runs \texttt{./mvnw spring-boot:run} with the \texttt{local} profile, which is convenient when a PostgreSQL instance is already available. The script \texttt{start.sh} at the repository root stops any running stack and rebuilds and starts the three containers defined in \texttt{docker/docker-compose.local.yaml} (Section~\ref{sec:impl-docker}).
+
+%========================================================================================
+\section{Backend: Spring Boot REST API}
+\label{sec:impl-back}
+
+\subsection{Package Structure}
+
+The backend follows a classical layered architecture. Requests enter through the controllers of the \texttt{controller.v1} package, which delegate to service interfaces implemented in \texttt{service.serviceimpl}; the services use Spring Data repositories (\texttt{repository}) and translate between entities (\texttt{entity}) and transfer objects (\texttt{dto.v1}) with hand-written components in \texttt{mapper}. Cross-cutting code lives in \texttt{config} (security, CORS, OpenAPI, API path constants) and \texttt{exception} (error model and global handler). The constants of \texttt{ApiPaths} compose the versioned prefix \texttt{/api/v1}.
+
+\subsection{Entities and Persistence}
+
+Three JPA entities map the domain: \texttt{Client} (name and identity number), \texttt{Driver} (name and plate number) and \texttt{TransportLog}, the central business record of the haulage company. A transport log references one client and one driver through \texttt{@ManyToOne} associations and stores the load and unload dates and locations, the destination, the delivery note, and the monetary and fuel figures of the trip (advance, fuel quantity and price per litre, variable charge, charge price, client tariff and trip price), together with the operator and the commercial responsible for it (Listing~\ref{lst:entity-log}). Monetary amounts use \texttt{BigDecimal}, identifiers are generated by the database, and Lombok generates accessors and builders. The three repositories simply extend \texttt{JpaRepository}; all queries are therefore derived by Spring Data and parameterised, so no SQL string is concatenated anywhere in the code. The schema itself is created and updated by Hibernate (\texttt{ddl-auto: update}); no migration tool such as Flyway is used.
+
+\begin{lstlisting}[language=Java, basicstyle=\ttfamily\scriptsize, caption={Entity \texttt{TransportLog} with its two many-to-one associations (\texttt{back/\allowbreak src/\allowbreak main/\allowbreak java/\allowbreak com/\allowbreak delivery\_tracker\_app/\allowbreak app/\allowbreak entity/\allowbreak TransportLog.java})}, label={lst:entity-log}]
+@Entity
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor
+@Builder
+public class TransportLog {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne
+    private Client client;
+
+    @ManyToOne
+    private Driver driver;
+    // ...
+    private BigDecimal tripPrice;
+    // ...
+}
+\end{lstlisting}
+
+\subsection{Data Transfer Objects and Mappers}
+
+The API never exposes entities. Every module has a creation request, an update request and a response, all declared as Java records, which are immutable and concise. Validation rules are attached to the record components with Jakarta Bean Validation (Listing~\ref{lst:dto-record}); for transport logs, for instance, the client and driver identifiers, the dates and all monetary fields are mandatory. Two generic records complete the model: \texttt{BaseResponse<T>} wraps every successful answer with a success flag, a message and the payload, and \texttt{PagedResponse<T>} carries a page of results with its metadata.
+
+\begin{lstlisting}[language=Java, basicstyle=\ttfamily\scriptsize, caption={Request DTO declared as a Java record with Bean Validation constraints (\texttt{back/\allowbreak src/\allowbreak main/\allowbreak java/\allowbreak com/\allowbreak delivery\_tracker\_app/\allowbreak app/\allowbreak dto/\allowbreak v1/\allowbreak driver/\allowbreak CreateDriverRequest.java})}, label={lst:dto-record}]
+public record CreateDriverRequest(
+    @NotBlank @Size(max = 20) String name,
+    @NotBlank @Size(max = 20) String plateNumber
+) {
+}
+\end{lstlisting}
+
+The conversion between records and entities is done by one \texttt{@Component} per module (Listing~\ref{lst:mapper}). Explicit mappers were preferred to a generation library such as MapStruct: with three small entities they are easy to read and to debug. The mapper of transport logs additionally receives the already loaded client and driver, and delegates the nested conversions to the two other mappers.
+
+\begin{lstlisting}[language=Java, basicstyle=\ttfamily\scriptsize, caption={Hand-written mapper (no MapStruct) (\texttt{back/\allowbreak src/\allowbreak main/\allowbreak java/\allowbreak com/\allowbreak delivery\_tracker\_app/\allowbreak app/\allowbreak mapper/\allowbreak DriverMapper.java})}, label={lst:mapper}]
+@Component
+public class DriverMapper {
+    public Driver toEntity(CreateDriverRequest dto){
+        return Driver.builder()
+                .name(dto.name())
+                .plateNumber(dto.plateNumber())
+                .build();
+    }
+    // ...
+    public DriverResponse toDto(Driver driver){
+        return new DriverResponse(driver.getId(), driver.getName(), driver.getPlateNumber());
+    }
+    // ...
+}
+\end{lstlisting}
+
+\subsection{Services}
+
+Each service is an interface with an implementation in \texttt{serviceimpl} receiving its collaborators by constructor injection. The implementations contain the use-case logic: loading by identifier and raising a \texttt{ResourceNotFoundException} when the entity does not exist, updating (the client service loads the entity, applies the new name and identity number and saves it), deleting (a delete request for an identifier that does not exist is also reported as not found rather than as an internal error), and building the paginated answer from a Spring Data \texttt{Page}. The transport-log service is the only one that spans several aggregates: its create and update operations are \texttt{@Transactional} and first resolve the referenced client and driver, so that a request naming an unknown one fails with a not-found error before anything is written (Listing~\ref{lst:service-log}).
+
+\begin{lstlisting}[language=Java, basicstyle=\ttfamily\scriptsize, caption={Creation of a transport log resolves both associations in one transaction (\texttt{back/\allowbreak src/\allowbreak main/\allowbreak java/\allowbreak com/\allowbreak delivery\_tracker\_app/\allowbreak app/\allowbreak service/\allowbreak serviceimpl/\allowbreak TransportLogServiceImpl.java})}, label={lst:service-log}]
+@Transactional
+@Override
+public TransportLogResponse create(CreateTransportLogRequest request) {
+    Client client = clientRepo.findById(request.clientId()).orElseThrow(
+            () -> new ResourceNotFoundException("Client not found !")
+    );
+
+    Driver driver = driverRepo.findById(request.driverId()).orElseThrow(
+            () -> new ResourceNotFoundException("Driver not found !")
+    );
+
+    TransportLog saved = transportLogRepo.save(transportLogMapper.toEntity(request, client, driver));
+    return transportLogMapper.toDto(saved);
+}
+\end{lstlisting}
+
+\subsection{Controllers and OpenAPI Documentation}
+
+The controllers expose the same five operations on each resource, summarised in Table~\ref{tab:endpoints}. Updates carry the identifier in the request body, which is why \texttt{PUT} has no path parameter. The collection endpoints accept the zero-based \texttt{page} parameter (default 0) and the \texttt{size} parameter (default 10, constrained to the range 1--100 by Bean Validation on a \texttt{@Validated} controller). The path of the transport-log resource is \texttt{/trans\_logs}.
+
+\begin{table}[H]
+\centering
+\caption{REST endpoints exposed by the backend}
+\label{tab:endpoints}
+\small
+\begin{tabularx}{\linewidth}{@{}l l X l@{}}
+\toprule
+\textbf{Method} & \textbf{Path} & \textbf{Purpose} & \textbf{Access} \\
+\midrule
+POST & \texttt{/api/v1/auth/login} & Exchange credentials for a JWT & public \\
+POST & \texttt{/api/v1/\{clients,drivers,trans\_logs\}} & Create a resource (201 with \texttt{Location}) & token \\
+PUT & \texttt{/api/v1/\{clients,drivers,trans\_logs\}} & Update the resource named in the body & token \\
+GET & \texttt{/api/v1/\{clients,drivers,trans\_logs\}} & Paginated list (\texttt{page}, \texttt{size}) & token \\
+GET & \texttt{/api/v1/\{\dots\}/\{id\}} & Retrieve one resource & token \\
+DELETE & \texttt{/api/v1/\{\dots\}/\{id\}} & Delete one resource & token \\
+GET & \texttt{/actuator/health} & Liveness and database status & public \\
+GET & \texttt{/swagger-ui/**}, \texttt{/v3/api-docs.yaml} & Interactive and machine-readable API description & public \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Errors are returned in a uniform JSON body (Section~\ref{sec:impl-errors}): \texttt{400} for an invalid payload, \texttt{401} for a missing, malformed or expired token or wrong credentials, \texttt{403} when access is denied, \texttt{404} when the identifier (or the referenced client or driver) does not exist, and \texttt{500} for any other failure.
+
+Every controller is annotated for springdoc (Listing~\ref{lst:controller}): \texttt{@Tag} groups the operations, \texttt{@Operation} describes each of them, and \texttt{@ApiResponse} declares the success and error bodies by pointing to \texttt{BaseResponse}, \texttt{PagedResponse} and \texttt{ErrorResponse}. A class-level \texttt{@SecurityRequirement(name = "BearerAuth")} marks the endpoints as requiring the bearer scheme declared once in \texttt{OpenApiConfig}, where the title, version, licence and server of the API are also defined. The login operation overrides the requirement with an empty one so that Swagger~UI does not demand a token for it. The specification is served at runtime as \texttt{/v3/api-docs.yaml}, and the workflow \texttt{openapi-docs.yml} (Section~\ref{sec:impl-cicd}) publishes a static Swagger~UI built from it to GitHub Pages after each successful backend pipeline on the main branch.
+
+\begin{lstlisting}[language=Java, basicstyle=\ttfamily\scriptsize, caption={REST controller with OpenAPI annotations (excerpt) (\texttt{back/\allowbreak src/\allowbreak main/\allowbreak java/\allowbreak com/\allowbreak delivery\_tracker\_app/\allowbreak app/\allowbreak controller/\allowbreak v1/\allowbreak DriverController.java})}, label={lst:controller}]
+@RestController
+@Validated
+@AllArgsConstructor
+@RequestMapping(ApiPaths.BASE+ApiPaths.V1+"/drivers")
+@Tag(name = "Driver Management", description = "Operations related to driver entities")
+@SecurityRequirement(name = "BearerAuth")
+public class DriverController {
+    // ...
+    @PostMapping
+    @Operation(summary = "Create a new driver", description = "Adds a new driver to the system.")
+    @ApiResponse(responseCode = "201", description = "Driver created successfully",
+                 content = @Content(schema = @Schema(implementation = BaseResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Invalid driver data provided",
+                 content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<BaseResponse<DriverResponse>> create(@Valid @RequestBody CreateDriverRequest request){
+        DriverResponse res = driverService.create(request);
+        return ResponseEntity
+                .created(URI.create("/api/v1/drivers/" + res.id()))
+                .body(BaseResponse.ok("Driver created successfully", res));
+    }
+    // ...
+}
+\end{lstlisting}
+
+\subsection{Security}
+\label{sec:impl-security}
+
+Security is implemented with Spring Security in a stateless configuration. Figure~\ref{fig:jwt-flow} summarises the flow, and the components are described below.
+
+\input{figures/fig6-2}
+
+\paragraph{Authentication model.} The application has a single account, whose name and password are supplied through the environment variables \texttt{APP\_USER\_USERNAME} and \texttt{APP\_USER\_PASSWORD} and bound to the properties \texttt{app.user.*}; its role is \texttt{ROLE\_ADMIN}. The \texttt{SimpleUserDetailsService} hashes the configured password with BCrypt once, in a \texttt{@PostConstruct} method, discards the clear-text value, and returns a \texttt{UserDetails} object only for the configured user name (Listing~\ref{lst:user-details}). There is no user table, no registration and no role differentiation: \texttt{@EnableMethodSecurity} is switched on, but no method-level rule is currently declared, and every authenticated request is treated alike.
+
+\begin{lstlisting}[language=Java, basicstyle=\ttfamily\scriptsize, caption={The configured user, password hashed with BCrypt at start-up (excerpt) (\texttt{back/\allowbreak src/\allowbreak main/\allowbreak java/\allowbreak com/\allowbreak delivery\_tracker\_app/\allowbreak app/\allowbreak service/\allowbreak serviceimpl/\allowbreak SimpleUserDetailsService.java})}, label={lst:user-details}]
+@PostConstruct
+public void init() {
+    if (fixedRawPassword != null && !fixedRawPassword.isEmpty()) {
+        this.fixedHashedPassword = passwordEncoder.encode(fixedRawPassword);
+        logger.info("Initialized fixed user '{}' with hashed password.", fixedUsername);
+        // Clear the raw password from memory after hashing, for security
+        this.fixedRawPassword = null;
+    } else {
+        logger.error("No fixed user password provided in application properties or environment variables.");
+    }
+}
+    // ...
+    // Return Spring Security's UserDetails object
+    return new org.springframework.security.core.userdetails.User(
+            fixedUsername,
+            fixedHashedPassword,
+            authorities
+    );
+}
+\end{lstlisting}
+
+\paragraph{Token issuance.} The \texttt{AuthController} passes the credentials of a validated \texttt{LoginRequestDto} to the \texttt{AuthenticationManager}. On success, the \texttt{JwtTokenProvider} builds a signed token whose subject is the user name and whose \texttt{roles} claim lists the authorities; it is signed with an HMAC key derived from \texttt{JWT\_SECRET} and expires after the configured 30 minutes (Listing~\ref{lst:jwt-provider}). The response contains the token, the user name and the expiry time. No refresh token exists: when the token expires, the user logs in again.
+
+\begin{lstlisting}[language=Java, basicstyle=\ttfamily\scriptsize, caption={Token generation with jjwt (\texttt{back/\allowbreak src/\allowbreak main/\allowbreak java/\allowbreak com/\allowbreak delivery\_tracker\_app/\allowbreak app/\allowbreak config/\allowbreak JwtTokenProvider.java})}, label={lst:jwt-provider}]
+public String generateToken(Authentication authentication) {
+    String username = authentication.getName();
+
+    // Get roles from authentication object and join them into a comma-separated string
+    String roles = authentication.getAuthorities().stream()
+            .map(GrantedAuthority::getAuthority)
+            .collect(Collectors.joining(","));
+
+    Date now = new Date();
+    Date expiryDate = new Date(now.getTime() + jwtExpirationInMs);
+
+    return Jwts.builder()
+            .subject(username)
+            .claim("roles", roles)
+            .issuedAt(now)
+            .expiration(expiryDate)
+            .signWith(getSigningKey())
+            .compact();
+}
+\end{lstlisting}
+
+\paragraph{Request filtering.} The \texttt{JwtAuthenticationFilter}, a \texttt{OncePerRequestFilter} registered before the standard username/password filter, skips the public paths, extracts the token from the \texttt{Authorization: Bearer} header, validates its signature and expiry, loads the user and stores an authentication object in the security context (Listing~\ref{lst:jwt-filter}). An invalid or missing token leaves the context empty, and the decision is then taken by the authorisation rules of the filter chain (Listing~\ref{lst:security-config}): only the login route, the Actuator health endpoint, Swagger~UI and the OpenAPI document are public, and \texttt{anyRequest().authenticated()} applies to everything else, including all \texttt{/api/v1/clients} endpoints; the filter itself contains no exception for any business path. The chain also registers an \texttt{authenticationEntryPoint} and an \texttt{accessDeniedHandler} that write the same JSON \texttt{ErrorResponse} as the rest of the API (status, error label, message, request path, timestamp) with the status \texttt{401} for an unauthenticated, invalid or expired token and \texttt{403} for a denied access. Without them, Spring Security would answer an unauthenticated request with an empty \texttt{403}, which the frontend could not distinguish from a permission problem. Sessions are disabled and CSRF protection is switched off, which is appropriate for an API that authenticates every request with a bearer token and keeps no cookie-based session.
+
+\begin{lstlisting}[language=Java, basicstyle=\ttfamily\scriptsize, caption={Bearer-token filter (excerpt) (\texttt{back/\allowbreak src/\allowbreak main/\allowbreak java/\allowbreak com/\allowbreak delivery\_tracker\_app/\allowbreak app/\allowbreak config/\allowbreak JwtAuthenticationFilter.java})}, label={lst:jwt-filter}]
+String path = request.getServletPath();
+
+if (
+        path.startsWith("/api/v1/auth/") ||
+        path.startsWith("/actuator/health") ||
+        path.startsWith("/v3/api-docs.yaml") ||
+        path.startsWith("/swagger-ui/")
+    ) {
+    filterChain.doFilter(request, response);
+    return;
+}
+
+try {
+    String jwt = getJwtFromRequest(request);
+
+    if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
+        String username = tokenProvider.getUsernameFromToken(jwt);
+
+        UserDetails userDetails = simpleUserDetailsService.loadUserByUsername(username);
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities());
+        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+} catch (Exception ex) {
+    // ...
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=Java, basicstyle=\ttfamily\scriptsize, caption={Stateless filter chain with JSON 401/403 handlers (\texttt{back/\allowbreak src/\allowbreak main/\allowbreak java/\allowbreak com/\allowbreak delivery\_tracker\_app/\allowbreak app/\allowbreak config/\allowbreak SecurityConfig.java})}, label={lst:security-config}]
+public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                               JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+    http
+            .cors(cors -> cors.configurationSource(corsConfigurationSource))
+            .csrf(AbstractHttpConfigurer::disable)
+            .authorizeHttpRequests(authorize -> authorize
+                    .requestMatchers("/swagger-ui/**").permitAll()
+                    .requestMatchers("/v3/api-docs.yaml").permitAll()
+                    .requestMatchers("/api/v1/auth/**").permitAll()
+                    .requestMatchers("/actuator/health").permitAll()
+                    .anyRequest().authenticated()
+            )
+            .exceptionHandling(e -> e
+                    .authenticationEntryPoint((request, response, ex) ->
+                            writeError(response, request, HttpStatus.UNAUTHORIZED, "Authentication is required to access this resource."))
+                    .accessDeniedHandler((request, response, ex) ->
+                            writeError(response, request, HttpStatus.FORBIDDEN, "Access denied."))
+            )
+            .sessionManagement(session -> session
+                    .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+    return http.build();
+}
+// ...
+private void writeError(HttpServletResponse response, HttpServletRequest request,
+                        HttpStatus status, String message) throws IOException {
+    ErrorResponse body = new ErrorResponse(
+            status.value(), status.getReasonPhrase(), message, request.getRequestURI(), Instant.now());
+    response.setStatus(status.value());
+    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+    objectMapper.writeValue(response.getWriter(), body);
+}
+\end{lstlisting}
+
+\paragraph{Cross-origin requests.} \texttt{CorsConfig} registers a \texttt{CorsConfigurationSource} that allows the origins listed in the property \texttt{app.cors.allowed-origins}, which is filled from the environment variable \texttt{APP\_CORS\_ALLOWED\_ORIGINS} and defaults to the development origins \texttt{http://localhost:3000} and \texttt{http://127.0.0.1:3000}; it also allows the usual HTTP methods, any header and credentials, and exposes the \texttt{Authorization} header. The Ansible environment template sets the same variable on the servers. In the deployed topology the browser talks to the same origin as the frontend, because nginx proxies \texttt{/api} to the backend (Section~\ref{sec:impl-front}).
+
+\subsection{Error Handling}\label{sec:impl-errors}
+
+A \texttt{@ControllerAdvice} class, \texttt{GlobalExceptionHandler}, converts exceptions into one JSON body, the record \texttt{ErrorResponse} (status, error label, message, request path, timestamp). Failed Bean Validation yields a 400 response listing the offending fields, \texttt{ResourceNotFoundException} a 404, \texttt{BadCredentialsException} a 401 with a deliberately generic message, and any other exception a 500. Failures detected before a request reaches a controller (a missing, malformed or expired token, or a denied access) are reported by the security configuration with the same body and the status 401 or 403, as described above. The \texttt{@ApiResponse} annotations reference the same body type, so the documented and the actual error formats coincide.
+
+\subsection{Test Strategy}
+
+The backend tests follow the layers of the application. The Driver module served as the reference implementation of each level, which was then reproduced for the Client and TransportLog modules; the authentication controller and the security behaviour are covered as well. The suite contains 82 tests, all passing in the last run, which measured a JaCoCo line coverage of 77.1\,\% (see the results chapter).
+\begin{itemize}
+  \item \textbf{Unit tests of the service layer} use JUnit~5 and Mockito: the repository and the mapper are mocks, and the tests verify the returned value and the interactions.
+  \item \textbf{Web-layer tests} use \texttt{@WebMvcTest} with \texttt{MockMvc}. The service is replaced by a \texttt{@MockBean}, and the test imports a \texttt{TestSecurityConfig} that registers the real JWT components but a permissive filter chain, so that the tests concentrate on routing, validation and serialisation. Both success cases (201, 200) and failure cases (400 for invalid input, 404 for an unknown identifier) are covered (Listing~\ref{lst:test-controller}); the same slice is used for the \texttt{AuthController}, including the 401 answer to bad credentials.
+  \item \textbf{Repository tests} use \texttt{@DataJpaTest}, which starts only the JPA slice against an in-memory H2 database and provides a \texttt{TestEntityManager} for fixtures.
+  \item \textbf{Integration tests} use \texttt{@SpringBootTest} with \texttt{@AutoConfigureMockMvc}: the whole context is loaded, the properties normally supplied by the environment (token secret, application user) are provided with \texttt{@TestPropertySource}, an authenticated user is simulated with \texttt{@WithMockUser}, and the table is emptied before each test.
+  \item \textbf{Security integration tests} (\texttt{SecurityIntegrationTest}) load the real filter chain, not the permissive test configuration. They check that a request without a token, with a malformed token and with an expired token to a business endpoint (including the client endpoints) is answered with \texttt{401}, that a wrong password yields \texttt{401}, and that a valid login followed by a request carrying the issued token gives access.
+\end{itemize}
+The JaCoCo plugin instruments the test run, and the continuous-integration pipeline uploads its report to Codecov (Section~\ref{sec:impl-cicd}).
+
+\begin{lstlisting}[language=Java, basicstyle=\ttfamily\scriptsize, caption={MockMvc slice test of the Driver controller (excerpt) (\texttt{back/\allowbreak src/\allowbreak test/\allowbreak java/\allowbreak com/\allowbreak delivery\_tracker\_app/\allowbreak app/\allowbreak controller/\allowbreak v1/\allowbreak DriverControllerTest.java})}, label={lst:test-controller}]
+@WebMvcTest(controllers = DriverController.class)
+@Import(TestSecurityConfig.class)
+class DriverControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private DriverService driverService;
+    @Test
+    @DisplayName("POST /api/v1/drivers should return HTTP 400 Bad Request for invalid input")
+    void createDriver_ShouldReturn400BadRequestForInvalidInput() throws Exception {
+        // Arrange: Invalid request with an empty name
+        CreateDriverRequest invalidRequest = new CreateDriverRequest("", "A12345");
+
+        // Act
+        ResultActions result = mockMvc.perform(post(API_BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(invalidRequest))
+                .accept(MediaType.APPLICATION_JSON));
+
+        // Assert: The controller should catch the validation error and return 400
+        result.andDo(MockMvcResultHandlers.print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").isNotEmpty());
+    }
+    // ...
+}
+\end{lstlisting}
+
+%========================================================================================
+\section{Frontend: React Single-Page Application}
+\label{sec:impl-front}
+
+\subsection{Structure}
+
+The source tree of \texttt{front/src} separates presentation from infrastructure code. The \texttt{components} folder contains one sub-folder per screen (\texttt{Auth}, \texttt{Dashboard}, \texttt{Clients}, \texttt{Drivers}, \texttt{TransportLogs}), a \texttt{Layout} component providing the application bar, the navigation menu and the logout action, and a \texttt{Common} folder with the reusable pieces: \texttt{DataTable}, \texttt{ConfirmDialog}, \texttt{LoadingSpinner} and \texttt{ErrorBoundary}. The folder \texttt{contexts} holds the \texttt{AuthContext}, \texttt{services} the Axios client in \texttt{api.js}, and \texttt{utils} some formatting helpers.
+
+\subsection{Routing and Route Protection}
+
+Navigation uses React Router. The public \texttt{/login} route is wrapped in a \texttt{PublicRoute}, which redirects an already authenticated user to the dashboard; all other screens are children of a single route rendering the \texttt{Layout} and wrapped in a \texttt{ProtectedRoute}, which shows a spinner while the stored session is being restored and redirects anonymous visitors to the login page (Listing~\ref{lst:react-routes}). Unknown paths fall back to the dashboard. Because there is only one role, navigation is the same for every user. This protection is a usability feature; the authoritative checks are performed by the backend on every request.
+
+\begin{lstlisting}[language=JavaScript, basicstyle=\ttfamily\scriptsize, caption={Route guards (\texttt{front/\allowbreak src/\allowbreak App.js})}, label={lst:react-routes}]
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) return <LoadingSpinner />;
+
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+// ...
+const PublicRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) return <LoadingSpinner />;
+
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : children;
+};
+\end{lstlisting}
+
+\subsection{Authentication State and HTTP Client}
+
+The \texttt{AuthContext} exposes the authentication state (\texttt{isAuthenticated}, \texttt{user}, \texttt{loading}) and the \texttt{login} and \texttt{logout} functions through a provider and a \texttt{useAuth} hook. The login function calls the backend, validates the shape of the answer, and only then marks the session as authenticated; there is no local or simulated login path. On success, the token and the user name are written to \texttt{localStorage}, and at application start the provider restores the session from the same keys. Keeping the token in \texttt{localStorage} survives page reloads but makes it readable by any script running in the page; this trade-off is discussed with the limitations.
+
+All backend calls go through one Axios instance (Listing~\ref{lst:axios}). A request interceptor reads the token from \texttt{localStorage} and adds the \texttt{Authorization: Bearer} header. A response interceptor translates failures into user-facing messages stored in \texttt{error.userMessage} (time-out, network error, 403, 5xx, or the \texttt{message} returned by the API) and, on a 401 response, removes the stored session and redirects to the login page. The module finally exports one small object per resource (\texttt{clientsAPI}, \texttt{driversAPI}, \texttt{transportLogsAPI}) whose methods mirror the endpoints of Table~\ref{tab:endpoints}. The base URL of the instance is \texttt{process.env.REACT\_APP\_API\_URL} when that variable is set at build time and the relative path \texttt{/api/v1} otherwise. A relative URL works in both execution modes: in the containers, nginx proxies \texttt{/api/} to the backend (Listing~\ref{lst:nginx}), and in local development the \texttt{proxy} entry of \texttt{package.json} makes the Create React App development server forward unknown requests to \texttt{http://localhost:8080}. The same build can therefore be deployed to any host without recompilation.
+
+\begin{lstlisting}[language=JavaScript, basicstyle=\ttfamily\scriptsize, caption={Axios interceptors (excerpt) (\texttt{front/\allowbreak src/\allowbreak services/\allowbreak api.js})}, label={lst:axios}]
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    // ...
+    } else if (error.response?.status === 401) {
+      // Token expired or invalid
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('username');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+      error.userMessage = 'Session expired. Please log in again.';
+\end{lstlisting}
+
+\subsection{Screens and Reusable Components}
+
+The \textbf{Dashboard} issues three requests in parallel with \texttt{Promise.all}: it reads the \texttt{totalElements} field of a one-element page of clients and of drivers to display the counts, and fetches the first five transport logs. The \textbf{Clients} and \textbf{Drivers} screens share the same pattern: a paginated \texttt{DataTable}, a dialog containing the creation and edition form with field-level validation, a \texttt{ConfirmDialog} before deletion, and a \texttt{Snackbar} reporting success or failure. The \textbf{Transport logs} screen uses a larger form: the client and the driver are chosen through \texttt{Autocomplete} fields fed by the corresponding endpoints, and mandatory and numeric fields are checked before submission. The monetary values, including the trip price, are entered by the operator; the application records them but does not derive one from another.
+
+\texttt{DataTable} is a generic component driven by a column description and by the pagination state (\texttt{page}, \texttt{size}, \texttt{totalElements}) held by the parent, which maps directly onto the server-side pagination of the API. \texttt{ErrorBoundary} catches rendering errors below it and displays a recovery screen instead of a blank page. The data-loading functions of the three management screens are wrapped in \texttt{useCallback} so that they can be listed as dependencies of the \texttt{useEffect} hooks that call them. The frontend test suite is limited to smoke tests in \texttt{App.test.js}, which the pipeline nevertheless executes.
+
+\subsection{Serving the Application with nginx}
+
+In the container image the compiled application is served by nginx (Listing~\ref{lst:nginx}). The \texttt{location /} block implements the single-page-application fallback with \texttt{try\_files}, so that deep links such as \texttt{/drivers} are answered by \texttt{index.html}; static assets are cached for a year, whereas HTML is never cached. The \texttt{location /api/} block proxies requests to the container named \texttt{spring-boot-app} on port 8080, forwarding the client address and protocol headers and setting 30-second time-outs; Swagger~UI and the OpenAPI document are proxied likewise. The server also enables gzip compression, adds the headers \texttt{X-Frame-Options}, \texttt{X-Content-Type-Options}, \texttt{X-XSS-Protection}, \texttt{Referrer-Policy} and a \texttt{Content-Security-Policy}, denies access to hidden files, and answers \texttt{/health} directly, which the image health check relies on.
+
+\begin{lstlisting}[language=bash, basicstyle=\ttfamily\scriptsize, caption={Single-page-application serving and API proxy (excerpt) (\texttt{front/\allowbreak nginx.conf})}, label={lst:nginx}]
+location / {
+    root /usr/share/nginx/html;
+    index index.html index.htm;
+    try_files $uri $uri/ /index.html;
+    }
+# Proxy API requests to Spring Boot backend
+location /api/ {
+    proxy_pass http://spring-boot-app:8080;
+    }
+# Health check endpoint
+location /health {
+    access_log off;
+    return 200 "healthy\n";
+    add_header Content-Type text/plain;
+}
+\end{lstlisting}
+
+%========================================================================================
+\section{Containerisation}
+\label{sec:impl-docker}
+
+\subsection{Backend Image}
+
+The backend image is built in two stages (Listing~\ref{lst:back-dockerfile}). The first stage uses the Temurin JDK~21 image, copies \texttt{pom.xml} and the Maven wrapper before the sources and resolves the dependencies in a separate layer, so that Docker's layer cache is reused as long as the dependencies do not change; the application is then packaged with the tests skipped, since they have already been executed by the pipeline before the image is built. The second stage starts from the Temurin JRE~21 image, which contains no compiler or build tool, creates a dedicated system user and group, copies only the executable JAR owned by that user, and runs the application as this unprivileged user. A compromised process thus does not hold root privileges inside the container.
+
+\begin{lstlisting}[language=Dockerfile, basicstyle=\ttfamily\scriptsize, caption={Backend multi-stage image (\texttt{back/\allowbreak Dockerfile})}, label={lst:back-dockerfile}]
+FROM eclipse-temurin:21-jdk-jammy AS build
+WORKDIR /app
+COPY pom.xml .
+COPY .mvn .mvn
+COPY mvnw .
+RUN ./mvnw dependency:resolve
+COPY src ./src
+RUN ./mvnw clean package -DskipTests
+FROM eclipse-temurin:21-jre-jammy
+WORKDIR /app
+EXPOSE 8080
+RUN groupadd --system app && useradd --system --gid app --no-create-home app
+COPY --from=build --chown=app:app /app/target/*.jar app.jar
+USER app
+ENTRYPOINT ["java", "-jar", "app.jar"]
+\end{lstlisting}
+
+\subsection{Frontend Image}
+
+The frontend image (Listing~\ref{lst:front-dockerfile}) also has two stages: Node~20 on Alpine compiles the React application with \texttt{npm ci} and \texttt{npm run build}, and the resulting static files are copied into an \texttt{nginx:alpine} image together with the configuration of Listing~\ref{lst:nginx}. The runtime stage upgrades the Alpine packages, installs \texttt{curl} for the health check, gives the \texttt{nginx} user ownership of the cache, log and content directories, and switches to \texttt{USER nginx}. A \texttt{HEALTHCHECK} instruction polls the \texttt{/health} location every 30 seconds so that Docker reports the container as unhealthy if nginx stops answering. The file is named \texttt{dockerfile} in lower case in the repository.
+
+\begin{lstlisting}[language=Dockerfile, basicstyle=\ttfamily\scriptsize, caption={Frontend image (\texttt{front/\allowbreak dockerfile})}, label={lst:front-dockerfile}]
+FROM node:20-alpine3.22 AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN npm run build
+FROM nginx:alpine
+RUN apk update && apk upgrade && \
+    apk add --no-cache curl && \
+    rm -rf /var/cache/apk/*
+RUN rm /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/
+COPY --from=build /app/build /usr/share/nginx/html
+RUN chown -R nginx:nginx /var/cache/nginx /var/run /var/log/nginx /usr/share/nginx/html
+RUN mkdir -p /run && chown -R nginx:nginx /run
+USER nginx
+EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost/health || exit 1
+CMD ["nginx", "-g", "daemon off;"]
+\end{lstlisting}
+
+\subsection{Compose Files}
+
+Three Compose files live in \texttt{docker/}. \texttt{docker-compose.local.yaml} builds the backend and the frontend from the sources and starts a \texttt{postgres:16-alpine} database; it is the file used by \texttt{start.sh}. The other two use an already built backend image (\texttt{docker-compose.back.yaml} starts only the backend and the database). In all of them the services share a bridge network, and the database keeps its data in the named volume \texttt{db\_data}, so that the data survive container re-creation (Figure~\ref{fig:docker-arch}).
+
+\input{figures/fig6-1}
+
+The startup order is guarded by a health check rather than by a mere \texttt{depends\_on}: the database service declares a \texttt{pg\_isready} probe, and the backend waits for the condition \texttt{service\_healthy} before starting (Listing~\ref{lst:compose}). This avoids the Spring application opening its connection pool before PostgreSQL accepts connections. All credentials are taken from the \texttt{.env} file through variable substitution, and the profile \texttt{docker} is activated through \texttt{SPRING\_PROFILES\_ACTIVE}.
+
+\begin{lstlisting}[language=YAML, basicstyle=\ttfamily\scriptsize, caption={Local stack: the database health check gates the backend (excerpt) (\texttt{docker/\allowbreak docker-compose.local.yaml})}, label={lst:compose}]
+app:
+  # ...
+  depends_on:
+    db:
+      condition: service_healthy
+# ...
+db:
+  # ...
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+\end{lstlisting}
+
+%========================================================================================
+\section{Infrastructure as Code with Terraform}
+\label{sec:impl-terraform}
+
+\subsection{Root Configuration}
+
+The \texttt{infra/} directory is a Terraform root module for the DigitalOcean provider (version constraint \texttt{\textasciitilde{}> 2.43}, Terraform 1.5 or later). The state is kept in a remote backend hosted by Terraform Cloud, which provides state locking and avoids storing state files in the repository; the provider token is a sensitive variable supplied by the pipeline.
+
+\texttt{main.tf} creates one VPC shared by the two environments and instantiates the module \texttt{modules/stack} twice, once as \texttt{staging} and once as \texttt{production} (Listing~\ref{lst:tf-main}). The environments differ only in the arguments passed to the module, mainly the droplet sizes, which are defined as variables with different defaults (a larger frontend and backend for production). Figure~\ref{fig:vpc-architecture} shows the resulting topology.
+
+\begin{lstlisting}[language=HCL, basicstyle=\ttfamily\scriptsize, caption={One module instantiated per environment (\texttt{infra/\allowbreak main.tf})}, label={lst:tf-main}]
+# STAGING stack
+module "staging" {
+  source            = "./modules/stack"
+  env_name          = "staging"
+  region            = var.region
+  vpc_uuid          = digitalocean_vpc.main.id
+  ssh_key_ids       = var.ssh_key_ids
+  allowed_admin_cidrs = var.allowed_admin_cidrs
+  app_port          = var.app_port
+
+  bastion_size      = var.bastion_size
+  frontend_size     = var.staging_frontend_size
+  backend_size      = var.staging_backend_size
+
+  db_engine         = var.db_engine
+  db_version        = var.db_version
+}
+\end{lstlisting}
+
+\input{figures/fig5-1}
+
+Variable validation is used to encode a security rule directly in the interface of the configuration: the list of CIDR blocks allowed to reach the bastion over SSH is rejected if it contains \texttt{0.0.0.0/0} (Listing~\ref{lst:tf-vars}).
+
+\begin{lstlisting}[language=HCL, basicstyle=\ttfamily\scriptsize, caption={Guard against opening SSH to the world (\texttt{infra/\allowbreak variables.tf})}, label={lst:tf-vars}]
+variable "allowed_admin_cidrs" {
+  description = "CIDRs allowed for SSH to bastion (e.g., your office IPs). Never 0.0.0.0/0."
+  type        = list(string)
+  default     = []
+  validation {
+    condition     = alltrue([for c in var.allowed_admin_cidrs : c != "0.0.0.0/0"])
+    error_message = "Do not allow SSH from 0.0.0.0/0."
+  }
+}
+\end{lstlisting}
+
+\subsection{The \texttt{stack} Module}
+
+The module encapsulates everything an environment needs and is parameterised by the environment name, the region, the VPC identifier, the SSH keys, the application port and the sizes of the machines. It creates:
+\begin{itemize}
+  \item three droplets (bastion, frontend, backend) from an Ubuntu~22.04 image, attached to the VPC, with DigitalOcean monitoring enabled and tagged by environment and role. Their cloud-init script only refreshes and upgrades the package cache; all software installation is left to Ansible;
+  \item three cloud firewalls bound to these droplets: the bastion accepts SSH only from the administrator CIDR blocks; the frontend accepts ports 80 and 443 from anywhere and SSH only from droplets tagged as bastion; the backend accepts SSH only from the bastion and the application port only from droplets tagged as frontend (Listing~\ref{lst:tf-fw}). tag-based sources keep the rules valid when addresses change;
+  \item a managed PostgreSQL cluster (engine and version from variables, a single node of the smallest size, attached to the private network, with a Monday maintenance window), a database named after the environment, and a database firewall whose only rule admits the backend droplet.
+\end{itemize}
+
+\begin{lstlisting}[language=HCL, basicstyle=\ttfamily\scriptsize, caption={Backend firewall rule and database firewall (excerpt) (\texttt{infra/\allowbreak modules/\allowbreak stack/\allowbreak main.tf})}, label={lst:tf-fw}]
+  # FE -> BE on app_port
+  inbound_rule {
+    protocol    = "tcp"
+    port_range  = tostring(var.app_port)
+    source_tags = [local.tag_frontend]
+  }
+# ...
+# Only allow the backend droplet to talk to this DB
+resource "digitalocean_database_firewall" "db_fw" {
+  cluster_id = digitalocean_database_cluster.db.id
+
+  rule {
+    type  = "droplet"
+    value = digitalocean_droplet.backend.id
+  }
+}
+\end{lstlisting}
+
+\subsection{DNS and Outputs}
+
+\texttt{dns.tf} declares the DNS domain managed by DigitalOcean with public records for the frontend and the bastion of each environment and private records for the frontend and backend droplets, which resolve to addresses inside the VPC. \texttt{outputs.tf} exports the resulting names and the database host of each environment. These outputs are the interface with Ansible: the inventory generator reads them in JSON form (Section~\ref{sec:impl-ansible}), so that no address is copied by hand.
+
+\subsection{Policy as Code with OPA}
+
+Custom guardrails complement the generic scanners. Two Rego files in \texttt{infra/policy/}, written in the \texttt{rego.v1} dialect and sharing the package \texttt{terraform.security}, define \texttt{deny} rules evaluated against the JSON rendering of the Terraform plan. Seven checks are implemented in total (Table~\ref{tab:rego}).
+\begin{itemize}
+  \item \texttt{bastion\_access.rego} forbids SSH rules open to \texttt{0.0.0.0/0} or \texttt{::/0} on every firewall other than the bastion's, forbids the same on the bastion's firewall, and requires a source address on the bastion's SSH rule.
+  \item \texttt{droplet\_config.rego} restricts droplet images to an approved list, requires at least one SSH key on every droplet when the key list is known at plan time, requires the tag \texttt{role:bastion-<env>} on the bastion droplet, and requires an \texttt{env:} tag on every droplet (Listing~\ref{lst:rego}).
+\end{itemize}
+Two lessons of the first version shaped the current rules. Resources of the stack module appear in the plan with addresses of the form \texttt{module.staging.digitalocean\_firewall.frontend\_fw}, so the rules select resources by their type and planned name rather than by a Terraform address or an expression such as a droplet identifier, which is only known after the apply. The firewalls, in turn, select the bastion by the tag \texttt{role:bastion-<env>}, which is why the absence of that tag is itself a violation. The earlier rule requiring \texttt{fail2ban} in the user data was removed, because fail2ban is installed by Ansible and not by cloud-init.
+
+\begin{lstlisting}[language=bash, basicstyle=\ttfamily\scriptsize, caption={OPA policy: required droplet tags (excerpt) (\texttt{infra/\allowbreak policy/\allowbreak droplet\_config.rego})}, label={lst:rego}]
+# --- Policy 5: Droplets must carry the tags the firewalls select on ---
+# Firewalls scope SSH access with the tag role:bastion-<env> (see
+# modules/stack/main.tf), so a bastion droplet without that tag silently breaks
+# the "SSH only via bastion" design. Every droplet must also carry an env: tag.
+# (Software such as fail2ban is installed by Ansible, not cloud-init, so it is
+# intentionally not checked here.)
+deny contains msg if {
+  some rc in droplets
+  endswith(rc.change.after.name, "-bastion")
+  not has_tag_prefix(rc, "role:bastion-")
+  msg := sprintf("Bastion droplet %s must be tagged role:bastion-<env>.", [rc.change.after.name])
+}
+
+deny contains msg if {
+  some rc in droplets
+  not has_tag_prefix(rc, "env:")
+  msg := sprintf("Droplet %s must be tagged env:<env>.", [rc.change.after.name])
+}
+
+has_tag_prefix(rc, prefix) if {
+  some tag in rc.change.after.tags
+  startswith(tag, prefix)
+}
+\end{lstlisting}
+
+The rules were checked locally with Conftest against two synthetic plans written for the purpose: a compliant plan passed all seven checks, and a non-compliant plan produced seven failures, one per check. No real Terraform plan was evaluated during this verification, so the behaviour on the full output of the provider is not demonstrated. The rules are executed by Conftest in the Terraform workflow, with the option \texttt{--namespace terraform.security} so that the package is selected explicitly, and by OPA in a pull-request check (Section~\ref{sec:impl-cicd}).
+
+
+%========================================================================================
+\section{Configuration Management with Ansible}
+\label{sec:impl-ansible}
+
+\subsection{Layout}
+
+The \texttt{ansible/} directory is organised as follows.
+\begin{itemize}
+  \item \texttt{playbooks/}: \texttt{bootstrap.yml}, \texttt{deploy.yml} and \texttt{migrate-to-ansible-user.yml}.
+  \item \texttt{roles/}: twelve roles, described in Table~\ref{tab:roles-impl}.
+  \item \texttt{group\_vars/}: variables common to all hosts and to the bastions, and one folder per environment holding a plain \texttt{main.yml} and an encrypted \texttt{vault.yml}.
+  \item \texttt{inventories/}: the generated inventory; \texttt{scripts/}: the inventory generator and an SSH test script; a \texttt{Makefile} gives each operation a short, uniform command.
+\end{itemize}
+\texttt{ansible.cfg} sets the defaults: the remote user is the service account \texttt{ansible}, host-key checking is enabled, facts are cached, and the SSH arguments enable agent forwarding and connection multiplexing. Pipelining and SFTP are disabled to avoid problems with the proxied SSH connections.
+
+\subsection{Inventory Generated from Terraform}
+
+The inventory is never written by hand. The Makefile target \texttt{inventory} exports the Terraform outputs to JSON and runs \texttt{scripts/generate\_inventory.py}, which builds the groups \texttt{staging}, \texttt{production}, \texttt{bastion}, \texttt{frontend}, \texttt{backend} and \texttt{app\_servers} from the DNS names found in the outputs and stores the database host of each environment as a variable. The generated file is not versioned. The bastion is contacted directly, whereas the frontend and backend hosts, reachable only through the private network, receive an \texttt{ansible\_ssh\_common\_args} value with \texttt{-o ProxyJump} through the bastion and agent forwarding (Listing~\ref{lst:ans-inv}). The target ends with a connectivity test of all hosts. The connecting user is \texttt{root} until a marker file created by the bootstrap shows that the service account exists, and \texttt{ansible} afterwards.
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize, caption={Inventory generation: ProxyJump through the bastion (excerpt) (\texttt{ansible/\allowbreak scripts/\allowbreak generate\_inventory.py})}, label={lst:ans-inv}]
+ssh_common_args = (
+    f"-o ProxyJump={proxyjump_user}@{bastion_dns} "
+    "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "
+    "-o ForwardAgent=yes -o IdentitiesOnly=yes"
+)
+# ...
+host_config = {
+    "ansible_host": frontend_dns,
+    "ansible_user": default_user,
+    "ansible_ssh_private_key_file": str(key_path),
+    "ansible_ssh_common_args": ssh_common_args,
+    "role": "frontend",
+    "env_name": env,
+    "private_ip": frontend_dns,
+}
+\end{lstlisting}
+
+\subsection{Playbooks}
+
+\paragraph{Bootstrap.} A fresh droplet only accepts the SSH key installed by DigitalOcean for \texttt{root}. The bootstrap therefore runs in two phases, driven by the Makefile target \texttt{bootstrap}. In the first phase, the playbook connects as \texttt{root} and applies only the \texttt{ansible\_user} role (tag \texttt{ansible\_user}). The Makefile then creates the marker file, regenerates the inventory so that it uses the new account, and in the second phase applies the remaining roles as \texttt{ansible} with privilege escalation (Listing~\ref{lst:ans-bootstrap}): the hardening roles on all hosts, fail2ban on the bastion, and, on the application servers, the container runtime (\texttt{docker\_runtime}), the host metrics exporter (\texttt{observability}) and, on the frontend only, the TLS certificate and nginx (\texttt{nginx\_tls}). The \texttt{when} conditions rely on a fact computed in a \texttt{pre\_task}, and the play runs one host at a time by default (\texttt{serial}). The playbook \texttt{migrate-to-ansible-user.yml} performs the first phase on hosts that were provisioned earlier and were still configured through \texttt{root}.
+
+\begin{lstlisting}[language=YAML, basicstyle=\ttfamily\scriptsize, caption={Role sequence of the bootstrap playbook (excerpt) (\texttt{ansible/\allowbreak playbooks/\allowbreak bootstrap.yml})}, label={lst:ans-bootstrap}]
+roles:
+  # --- Phase 1: Create ansible user only if root ---
+  - role: ansible_user
+    tags: ['ansible_user', 'bootstrap']
+    when: is_initial_setup | default(false)
+  # ...
+  - role: common
+    tags: ['common', 'bootstrap']
+    when: not is_initial_setup | default(false)
+  # ...
+  - role: fail2ban
+    tags: ['fail2ban', 'security', 'bootstrap']
+    when:
+      - not is_initial_setup | default(false)
+      - inventory_hostname in groups['bastion']
+
+  # --- Phase 3: container runtime, TLS and monitoring on the application hosts ---
+  - role: docker_runtime
+    tags: ['docker', 'runtime', 'bootstrap']
+    when:
+      - not is_initial_setup | default(false)
+      - inventory_hostname in groups['app_servers']
+
+  - role: nginx_tls
+    tags: ['nginx', 'tls', 'bootstrap']
+    when:
+      - not is_initial_setup | default(false)
+      - inventory_hostname in groups['frontend']
+
+  - role: observability
+    tags: ['observability', 'monitoring', 'bootstrap']
+    when:
+      - not is_initial_setup | default(false)
+      - inventory_hostname in groups['app_servers']
+\end{lstlisting}
+
+\paragraph{Deployment.} \texttt{deploy.yml} creates a time-stamped directory under \texttt{/opt/deployments}, logs the hosts in to the GitHub Container Registry with the \texttt{registry\_login} role, then applies the \texttt{app\_backend} role to the backend group and the \texttt{app\_frontend} role to the frontend group, each with a configurable \texttt{serial} so that hosts are updated one at a time, runs the \texttt{verify} role on all hosts, and, if a Slack webhook is defined in the environment's variables, posts a notification. The Makefile exposes it as \texttt{make deploy ENV=staging|production}, with optional \texttt{TAGS} and \texttt{LIMIT} variables and a \texttt{DEPLOY\_VERSION} variable. The images \texttt{ghcr.io/oubellaismail/spring-boot-backend} and \texttt{react-frontend} are referenced with the tag \texttt{<DEPLOY\_VERSION>-<env>}, which matches the tags pushed by the continuous-integration pipeline when \texttt{DEPLOY\_VERSION} is the commit SHA.
+
+\subsection{Roles}
+
+Table~\ref{tab:roles-impl} lists what each of the twelve roles does, as read from its tasks.
+
+\begin{table}[H]
+\centering
+\caption{Ansible roles and their actual behaviour}
+\label{tab:roles-impl}
+\small
+\begin{tabularx}{\linewidth}{@{}l X l@{}}
+\toprule
+\textbf{Role} & \textbf{Behaviour} & \textbf{Used by} \\
+\midrule
+\texttt{ansible\_user} & Creates the \texttt{ansible} account in the \texttt{sudo} group, copies the authorised keys of \texttt{root}, installs a validated sudoers drop-in with passwordless sudo & bootstrap \\
+\texttt{common} & Refreshes and upgrades packages, installs common tools, sets the time zone to UTC and the open-files limits, creates the application system user, configures log rotation and unattended security upgrades & bootstrap \\
+\texttt{ssh\_hardening} & Backs up \texttt{sshd\_config}, then sets, among others, \texttt{PermitRootLogin no}, \texttt{PasswordAuthentication no}, a limit of three authentication attempts and an \texttt{AllowUsers} list; validates the file with \texttt{sshd -t} before restarting the service & bootstrap \\
+\texttt{firewall} & Installs UFW with default deny incoming, allows SSH from the administrator's public address (detected at run time and refused if detection fails) and from the VPC range, allows port 80 everywhere and port 443 on frontends, enables logging & bootstrap \\
+\texttt{fail2ban} & Installs fail2ban and a \texttt{jail.local} template; adds an nginx jail on frontends & bootstrap (bastion) \\
+\texttt{app\_backend} & Creates the application directory, renders the environment file (mode 0600, values from the vault; it uses the variable names read by Spring: \texttt{SPRING\_PROFILES\_ACTIVE=docker}, \texttt{SPRING\_DATASOURCE\_*}, \texttt{APP\_USER\_*}, \texttt{JWT\_SECRET}, \texttt{APP\_CORS\_ALLOWED\_ORIGINS}) and the Compose file, starts the container with \texttt{docker\_compose\_v2} (always pulling), runs the migration script and installs a health-monitoring cron job & deploy \\
+\texttt{app\_frontend} & Renders the Compose file and an nginx site configuration, enables it and starts the frontend container & deploy \\
+\texttt{verify} & Checks uptime, that SSH, rsyslog, Docker and nginx services are running, that the application container is up, that the public health URL answers, that the TLS certificate is valid for at least a week, and that disk usage is below 90\,\% & deploy \\
+\texttt{docker\_runtime} & Adds the Docker apt repository and installs Docker Engine and the Compose plugin, writes \texttt{daemon.json} & bootstrap (app servers) \\
+\texttt{registry\_login} & Logs in to the GitHub Container Registry with a token from the vault (\texttt{vault\_ghcr\_token}) or the environment (\texttt{GHCR\_TOKEN}); skipped when neither is defined & deploy \\
+\texttt{nginx\_tls} & Installs nginx and certbot, generates DH parameters, obtains a Let's Encrypt certificate with \texttt{certbot certonly --standalone} (nginx is stopped and restarted by hooks; optionally from the staging CA) and schedules renewal & bootstrap (frontend) \\
+\texttt{observability} & Installs Prometheus node exporter as a systemd service, and a log-monitoring script run by cron & bootstrap (app servers) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+All twelve roles are now referenced by a playbook. The four roles that were initially left outside the playbooks (\texttt{docker\_runtime}, \texttt{nginx\_tls}, \texttt{observability}, \texttt{registry\_login}) were wired into \texttt{bootstrap.yml} and \texttt{deploy.yml}, and the deployment variables were aligned with the application: the environment file now uses the standard Spring datasource properties (the JDBC URL requires TLS with \texttt{sslmode=require}, as managed PostgreSQL does), activates the \texttt{docker} profile, lets Hibernate create the schema, and sets the application user, the signing secret and the CORS origins; the health-check path in the group variables is \texttt{/actuator/health}. The group variables are loaded through a symbolic link \texttt{inventories/group\_vars}, and the option \texttt{vault\_password\_file} of \texttt{ansible.cfg} was moved to its \texttt{[defaults]} section. These changes were validated with \texttt{ansible-playbook --syntax-check} on all playbooks; they have \emph{not} been executed against real hosts, so the behaviour of the roles on the servers during this revision is not verified.
+
+\subsection{Secrets and Environments}
+
+Secrets are managed with Ansible Vault. Each environment has its own \texttt{vault.yml} under \texttt{group\_vars/}, committed only in encrypted form (AES-256), and the plain \texttt{main.yml} of the same folder refers to the secrets by name, for example \texttt{jwt\_secret: "\{\{ vault\_staging\_jwt\_secret \}\}"}; the variables expected in each vault include the database credentials, the application user (\texttt{vault\_app\_user\_username}, \texttt{vault\_app\_user\_password}) and the signing secret. The vault password lives in a git-ignored file (\texttt{.vault\_pass}) that the Makefile passes to every command. The non-secret variables of \texttt{main.yml} capture the differences between the environments: domain names, the registry paths and tags of the container images (GHCR), resource limits of the containers, the choice between the staging and production certificate authorities, backup and monitoring settings.
+
+%========================================================================================
+\section{CI/CD with GitHub Actions}
+\label{sec:impl-cicd}
+
+The workflows of \texttt{.github/workflows/} implement the pipeline of Figure~\ref{fig:ci-cd-pipeline}. Two application pipelines (backend and frontend) call reusable security workflows, one workflow handles the infrastructure, and the deployment stage is only partly automated, as explained in Section~\ref{sec:impl-cd}.
+
+\input{figures/fig5-2}
+
+\subsection{Backend Pipeline}
+
+\texttt{ci-back.yaml} runs on every push to any branch that touches \texttt{back/} or the workflow files, and on pull requests to \texttt{main}. It contains four jobs chained with \texttt{needs}. The \texttt{build} job compiles the project on Java~21 with \texttt{./mvnw clean install}. The \texttt{test} job runs \texttt{./mvnw test} and sends the JaCoCo report to Codecov with a repository secret (Listing~\ref{lst:ci-back-test}). If both succeed, \texttt{build-and-push-docker} logs in to Docker Hub and to the GitHub Container Registry (GHCR), builds the image with Buildx using the GitHub Actions cache, and pushes it to GHCR under a tag made of the commit SHA and the suffix \texttt{-staging} (Listing~\ref{lst:ci-back-push}). The tag is exposed as a job output and passed to the last job, which calls the reusable workflow \texttt{security-scans.yaml}.
+
+\begin{lstlisting}[language=YAML, basicstyle=\ttfamily\scriptsize, caption={Test job of the backend pipeline (excerpt) (\texttt{.github/\allowbreak workflows/\allowbreak ci-back.yaml})}, label={lst:ci-back-test}]
+test:
+  needs: build
+  runs-on: ubuntu-latest
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Set up Java 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+    - name: Run Tests and Generate JaCoCo Report
+      run: ./mvnw test
+      working-directory: ./back
+    # ...
+    - name: Upload JaCoCo Coverage Report
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        directory: back/target/site/jacoco
+\end{lstlisting}
+
+\begin{lstlisting}[language=YAML, basicstyle=\ttfamily\scriptsize, caption={Image tagging and call of the reusable security workflow (\texttt{.github/\allowbreak workflows/\allowbreak ci-back.yaml})}, label={lst:ci-back-push}]
+    - name: Define Image Tag
+      id: meta
+      run: echo "image_tag=ghcr.io/${{ github.repository_owner }}/spring-boot-backend:${{ github.sha }}-staging" >> $GITHUB_OUTPUT
+# ...
+security-scans:
+  uses: ./.github/workflows/security-scans.yaml
+  needs: [build, test, build-and-push-docker]
+  with:
+    image_tag: ${{ needs.build-and-push-docker.outputs.image_tag }}
+\end{lstlisting}
+
+\subsection{Frontend Pipeline}
+
+\texttt{ci-front.yaml} has the same structure. The job \texttt{build-and-test} sets up Node~20 with the npm cache, installs dependencies with \texttt{npm ci}, builds the application and runs the tests non-interactively (\texttt{npm test -{}- --watchAll=false --ci}). The job \texttt{build-and-push-docker} publishes the image \texttt{react-frontend} to GHCR with the same tagging scheme, and \texttt{security-scans} calls \texttt{front-security-scan.yaml}.
+
+\subsection{Security Workflows}
+
+The two reusable workflows are triggered with \texttt{workflow\_call} and receive the image tag as input. Their permissions are limited to reading the repository and the packages and to writing security events. The backend workflow chains the following steps; the key excerpts are in Listing~\ref{lst:ci-sec}.
+\begin{itemize}
+  \item \textbf{Gitleaks} scans the full history (the checkout uses \texttt{fetch-depth: 0}) for committed secrets.
+  \item \textbf{OWASP Dependency-Check} analyses the Maven dependencies in HTML and SARIF formats; the SARIF run is configured with \texttt{--failOnCVSS 7}. Reports are stored as workflow artefacts, and the SARIF file is uploaded to GitHub code scanning.
+  \item \textbf{Semgrep} performs static analysis with the \texttt{p/ci} rule set.
+  \item \textbf{Trivy filesystem scan} first produces a SARIF report of HIGH and CRITICAL findings (exit code~0) that is uploaded to code scanning, and is then run a second time as a gate with \texttt{--exit-code 1 --severity CRITICAL --ignore-unfixed}, so that a fixable critical vulnerability fails the job.
+  \item \textbf{Trivy image scan} logs in to GHCR, scans the image that has just been pushed, uploads the SARIF report and finally fails the job if any HIGH or CRITICAL vulnerability is found in the image.
+\end{itemize}
+The frontend workflow (\texttt{front-security-scan.yaml}) applies the same Gitleaks, Semgrep and Trivy filesystem and image steps, restricted to \texttt{front/}. Instead of Dependency-Check, it runs \texttt{npm audit}, whose JSON report is archived as an artefact; this step is report-only because the command is followed by \texttt{|| true} (Listing~\ref{lst:ci-front-sec}). It ends by writing a summary table to the job summary page.
+
+\begin{lstlisting}[language=YAML, basicstyle=\ttfamily\scriptsize, caption={Trivy steps of the security workflow (excerpt) (\texttt{.github/\allowbreak workflows/\allowbreak security-scans.yaml})}, label={lst:ci-sec}]
+- name: Trivy FS Scan (SARIF report)
+  run: trivy fs --exit-code 0 --severity HIGH,CRITICAL --format sarif -o trivy-fs.sarif .
+# ...
+- name: Trivy FS Gate (fail on CRITICAL)
+  run: trivy fs --exit-code 1 --severity CRITICAL --ignore-unfixed .
+# ...
+- name: Fail if HIGH/CRITICAL vulnerabilities found
+  run: |
+    trivy image --exit-code 1 --severity HIGH,CRITICAL "$IMAGE_TAG"
+\end{lstlisting}
+
+\begin{lstlisting}[language=YAML, basicstyle=\ttfamily\scriptsize, caption={Frontend dependency audit is report-only (\texttt{.github/\allowbreak workflows/\allowbreak front-security-scan.yaml})}, label={lst:ci-front-sec}]
+- name: Run npm audit (JSON report)
+  run: npm audit --json > npm-audit.json || true
+  working-directory: ./front
+\end{lstlisting}
+
+\subsection{Infrastructure Workflow}
+
+\texttt{terraform.yaml} can be started manually with the target environment as a choice input, runs on pushes to \texttt{main} that modify \texttt{infra/}, and is scheduled every Monday at 06:00 UTC. A scheduled run only performs the drift detection described below: the \texttt{plan} and \texttt{apply} jobs are skipped when the event is a schedule (Listing~\ref{lst:tf-apply}). The \texttt{plan} job installs Terraform 1.9.5 with the Terraform Cloud token, runs the scanners \textbf{tfsec} and \textbf{Checkov}, initialises the backend, selects or creates the workspace named after the environment (after validating the name against the two allowed values and passing it through an environment variable instead of interpolating it into the script, which prevents shell injection), validates the configuration and produces the plan, which is also converted to JSON for the policy check. \textbf{Conftest} then evaluates the policies of \texttt{infra/policy} against the plan (Listing~\ref{lst:tf-plan}), and the binary plan is uploaded as an artefact. The \texttt{apply} job depends on \texttt{plan}, runs only for a push or a manual run on the \texttt{main} branch, targets a GitHub \emph{environment} of the same name as the workflow input (so that protection rules such as required reviewers can be attached to it), downloads the saved plan and applies exactly that plan, ensuring that what was scanned is what is deployed.
+
+\begin{lstlisting}[language=YAML, basicstyle=\ttfamily\scriptsize, caption={Terraform workflow: scanners, plan and policy check (excerpt) (\texttt{.github/\allowbreak workflows/\allowbreak terraform.yaml})}, label={lst:tf-plan}]
+- name: tfsec (Terraform SAST)
+  uses: aquasecurity/tfsec-action@v1
+
+- name: Checkov (Policy/Best Practices)
+  uses: bridgecrewio/checkov-action@master
+  with:
+    directory: infra
+# ...
+- name: Terraform Plan (save JSON for OPA)
+  run: |
+    terraform plan -out=tfplan
+    terraform show -json tfplan > tfplan.json
+# ...
+- name: Run Conftest on Terraform plan
+  run: conftest test --policy policy --namespace terraform.security tfplan.json
+\end{lstlisting}
+
+\begin{lstlisting}[language=YAML, basicstyle=\ttfamily\scriptsize, caption={Scheduled runs never plan or apply (excerpt) (\texttt{.github/\allowbreak workflows/\allowbreak terraform.yaml})}, label={lst:tf-apply}]
+plan:
+  name: Security Scan + Plan
+  # Scheduled runs are drift detection only (see drift-detect); never plan/apply from them.
+  if: github.event_name != 'schedule'
+# ...
+apply:
+  name: Apply
+  runs-on: ubuntu-latest
+  needs: plan
+  # Apply only on push to main or a manual dispatch from main; never on schedule.
+  if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+  environment: ${{ github.event.inputs.environment || 'staging' }}
+\end{lstlisting}
+
+The \texttt{drift-detect} job runs only on scheduled executions. It selects the staging workspace, runs \texttt{terraform plan -detailed-exitcode}, and the exit code~2, which signals a difference between the code and the real infrastructure, triggers the creation of a GitHub issue from the template \texttt{.github/drift-template.md} with the labels \texttt{drift}, \texttt{infra}, \texttt{staging} and a priority (Listing~\ref{lst:tf-drift}). The same sequence is then repeated for production, if the workspace exists, with a critical priority label.
+
+\begin{lstlisting}[language=YAML, basicstyle=\ttfamily\scriptsize, caption={Scheduled drift detection (excerpt) (\texttt{.github/\allowbreak workflows/\allowbreak terraform.yaml})}, label={lst:tf-drift}]
+- name: Detect Drift (staging)
+  id: drift
+  run: |
+    set +e
+    terraform plan -detailed-exitcode -no-color
+    code=$?
+    echo "exit_code=$code" >> $GITHUB_OUTPUT
+    exit 0
+# ...
+- name: Create Issue on Drift (staging)
+  if: steps.drift.outputs.exit_code == '2'
+  uses: peter-evans/create-issue-from-file@v5
+    # ...
+    content-filepath: .github/drift-template.md
+\end{lstlisting}
+
+A second workflow, \texttt{opa-policy-check.yaml}, is triggered by pull requests that change files under \texttt{infra/}. It runs in the \texttt{infra} directory, produces a plan, renders it as JSON and evaluates \texttt{data.terraform.security.deny[\_]} with \texttt{opa eval --fail-defined}, which fails the check as soon as any deny rule yields a message (querying the set itself would not work, since an empty set is still a defined value) (Listing~\ref{lst:opa-wf}). Violations are thus reported on the pull request before the merge, while the Conftest step of \texttt{terraform.yaml} acts as a second barrier on the main branch.
+
+\begin{lstlisting}[language=YAML, basicstyle=\ttfamily\scriptsize, caption={Policy check on pull requests touching \texttt{infra/} (\texttt{.github/\allowbreak workflows/\allowbreak opa-policy-check.yaml})}, label={lst:opa-wf}]
+on:
+  pull_request:
+    paths:
+      - 'infra/**'
+      # ...
+      - name: Run OPA
+        # deny[_] is undefined when no rule fires, so --fail-defined only fails on violations
+        # (the bare deny set is an empty, i.e. defined, set and would always fail).
+        run: opa eval --format pretty --fail-defined -i plan.json -d policy/ "data.terraform.security.deny[_]"
+\end{lstlisting}
+
+\subsection{Continuous Deployment}
+\label{sec:impl-cd}
+
+Deployment automation is the least complete part of the pipeline. \texttt{cd-back.yaml} is triggered by the completion of the workflow \texttt{Terraform Infrastructure}; it runs only if that run succeeded and was not a scheduled run, then opens an SSH session on a server whose address, user and key are repository secrets, updates a checkout, pulls the images and restarts the Compose services (Listing~\ref{lst:cd-back}). It is a plain \texttt{docker compose up -d} on one host, with no rolling update, no automatic rollback and no call to the Ansible playbooks. Because it follows the infrastructure workflow rather than the application pipeline, it is a coarse mechanism rather than a release process. \texttt{cd-front.yaml}, triggered after the frontend CI, only prints a placeholder message. The deployment path that exercises the complete configuration is the Ansible command \texttt{make deploy} of Section~\ref{sec:impl-ansible}, launched by an operator. Note that the continuous-integration pipeline only builds images tagged with the commit SHA and the suffix \texttt{-staging}; a production deployment therefore requires an explicit image tag.
+
+\begin{lstlisting}[language=YAML, basicstyle=\ttfamily\scriptsize, caption={Backend deployment job (\texttt{.github/\allowbreak workflows/\allowbreak cd-back.yaml})}, label={lst:cd-back}]
+on:
+  workflow_run:
+    workflows: ["Terraform Infrastructure"]
+    types:
+      - completed
+# ...
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'schedule' }}
+          # ...
+          script: |
+            cd /app
+            git pull origin main
+            docker compose pull
+            docker compose up -d
+\end{lstlisting}
+

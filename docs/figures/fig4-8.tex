@@ -1,0 +1,23 @@
+\begin{figure}[H]
+\centering
+\begin{adjustbox}{max width=\linewidth}
+\begin{tikzpicture}[>=latex, thick,
+  layer/.style={rectangle, draw=Eblue, rounded corners=6pt, fill=Ecyan!15, minimum width=7.2cm, minimum height=1.25cm, font=\small, align=center},
+  sbox/.style={rectangle, draw=Egray, rounded corners=6pt, fill=Egray!10, minimum width=4.6cm, minimum height=1.25cm, font=\small, align=center}]
+\node[layer, fill=Egreen!15, draw=Egreen] (sec) {\textbf{config} -- security filter chain\\{\scriptsize CORS, JwtAuthenticationFilter, SecurityConfig, OpenApiConfig}};
+\node[layer, below=0.7cm of sec] (ctl) {\textbf{controller.v1}\\{\scriptsize AuthController, Client-, Driver-, TransportLogController}};
+\node[layer, below=0.7cm of ctl] (svc) {\textbf{service} / \textbf{service.serviceimpl}\\{\scriptsize interfaces, implementations, SimpleUserDetailsService}};
+\node[layer, below=0.7cm of svc] (rep) {\textbf{repository}\\{\scriptsize Spring Data JPA: ClientRepo, DriverRepo, TransportLogRepo}};
+\node[layer, below=0.7cm of rep, fill=Eorange!15, draw=Eorange] (ent) {\textbf{entity}\\{\scriptsize Client, Driver, TransportLog}};
+\node[sbox, anchor=west] (dto) at ([xshift=1.6cm]ctl.east) {\textbf{dto.v1}\\{\scriptsize request/response records,}\\{\scriptsize BaseResponse, PagedResponse}};
+\node[sbox, anchor=west] (map) at ([xshift=1.6cm]svc.east) {\textbf{mapper}\\{\scriptsize hand-written Spring}\\{\scriptsize components}};
+\node[sbox, anchor=east] (exc) at ([xshift=-1.6cm]ctl.west) {\textbf{exception}\\{\scriptsize GlobalExceptionHandler,}\\{\scriptsize ErrorResponse}};
+\foreach \a/\b in {sec/ctl, ctl/svc, svc/rep, rep/ent}{\draw[->, Eblue] (\a) -- (\b);}
+\draw[<->, Egray] (ctl) -- (dto);
+\draw[<->, Egray] (svc) -- (map);
+\draw[->, Egray, dashed] (exc) -- (ctl);
+\end{tikzpicture}
+\end{adjustbox}
+\caption{Layered organisation of the backend (package \texttt{com.delivery\_tracker\_app.app}); arrows show the allowed call direction}
+\label{fig:backend-layers}
+\end{figure}

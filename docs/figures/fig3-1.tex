@@ -1,0 +1,34 @@
+\begin{figure}[H]
+\centering
+\begin{adjustbox}{max width=\linewidth}
+\begin{tikzpicture}[>=latex, thick,
+  actor/.style={rectangle, draw=Egray, rounded corners=4pt, fill=white, minimum width=2.8cm, minimum height=1.1cm, font=\small, align=center},
+  sys/.style={rectangle, draw=Eblue, rounded corners=6pt, fill=Ecyan!15, minimum width=2.8cm, minimum height=1.1cm, font=\small, align=center},
+  ext/.style={rectangle, draw=Eorange, rounded corners=4pt, fill=Eorange!10, minimum width=2.8cm, minimum height=1.1cm, font=\small, align=center},
+  lbl/.style={font=\scriptsize, text=Egray, align=center}]
+
+% Row 1: business flow
+\node[actor] (op) at (0,0) {Administrator /\\operator};
+\node[sys] (fe) at (4.4,0) {React single-page\\application};
+\node[sys] (be) at (8.8,0) {Spring Boot\\REST API};
+\node[sys, fill=Eorange!15, draw=Eorange] (db) at (13.2,0) {PostgreSQL\\database};
+\node[draw=Eblue, dashed, rounded corners=10pt, fit=(fe)(be)(db), inner sep=0.45cm, label={[Eblue,font=\small\bfseries]above:Delivery Tracker application}] (app) {};
+\draw[->, Eblue] (op) -- node[lbl, above]{HTTPS} (fe);
+\draw[->, Eblue] (fe) -- node[lbl, above]{REST, JWT} (be);
+\draw[->, Eblue] (be) -- node[lbl, above]{SQL (JPA)} (db);
+
+% Row 2: delivery platform
+\node[actor] (dev) at (0,-4.2) {DevOps\\engineer};
+\node[ext] (gh) at (4.4,-4.2) {GitHub Actions\\(CI, scans)};
+\node[ext] (reg) at (8.8,-4.2) {Container registry\\(GHCR)};
+\node[ext] (do) at (13.2,-4.2) {Terraform Cloud\\+ DigitalOcean};
+\draw[->, Egray] (dev) -- node[lbl, above]{git push} (gh);
+\draw[->, Egray] (gh) -- node[lbl, above]{build, scan,\\push image} (reg);
+\draw[->, Egray, dashed] (reg) -- node[lbl, above]{image\\deployed} (do);
+\draw[->, Egray, dashed] (do.north) -- node[lbl, right]{hosts the\\application} (db.south);
+\draw[->, Egray] (dev.south) -- ++(0,-1.3) -| node[lbl, pos=0.25, below]{Terraform, Ansible (SSH via bastion)} (do.south);
+\end{tikzpicture}
+\end{adjustbox}
+\caption{System context: actors, the Delivery Tracker application and the external platforms that build and host it}
+\label{fig:high-level-architecture}
+\end{figure}

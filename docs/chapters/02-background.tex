@@ -1,0 +1,189 @@
+%========================================================================================
+%   Chapter 2 — State of the Art: DevSecOps
+%========================================================================================
+
+\chapter{State of the Art: DevSecOps}
+
+This chapter reviews the concepts, frameworks and tools on which the project rests. We first recall how security moved from a final verification step to a continuous activity (Section~\ref{sec:evolution}), then present the reference frameworks that describe a secure development lifecycle (Section~\ref{sec:frameworks}). We then discuss the security of web applications exposing a REST API (Section~\ref{sec:webappsec}), classify the families of automated security tests and position the tools used in the project (Section~\ref{sec:testing}), and review infrastructure as code, containers and CI/CD platforms (Sections~\ref{sec:iac}--\ref{sec:cicd}). The chapter closes by positioning our work with respect to this state of the art (Section~\ref{sec:positioning}).
+
+%------------------------------------------------
+\section{From Waterfall to DevSecOps}
+\label{sec:evolution}
+
+\subsection{Waterfall and the late treatment of security}
+
+The sequential development model is usually traced back to Royce, who described a succession of phases (requirements, analysis, design, coding, testing, operations) and already noted the risks of discovering problems only at the testing stage~\cite{royce1970}. In the plain sequential interpretation of this model, security verification takes place at the end of the cycle, once the code is written and often once the architecture is frozen. A flaw found at this point may require redesign rather than a local correction.
+
+The economic argument behind earlier verification was documented by Boehm, who reported that the relative cost of correcting a defect grows as the phase in which it is detected gets later~\cite{boehm1981}. We stress that this finding concerns software defects in general and was established on projects of the 1970s; it supports the \emph{direction} of the argument (early detection is cheaper) rather than any specific multiplier for security flaws in modern web applications, and we therefore do not quote figures here.
+
+\subsection{Agile, DevOps and continuous delivery}
+
+Agile methods shortened the development cycle, and DevOps extended this logic to operations by automating the build, test and release of software. Forsgren, Humble and Kim present continuous integration, continuous delivery, version-controlled configuration and loosely coupled architectures among the technical capabilities statistically associated with higher software delivery performance~\cite{forsgren2018}. The consequence for security is double-edged: releases become frequent and small, which is favourable, but a manual security review at the end of each cycle becomes incompatible with the pace of delivery. Moreover, automated pipelines themselves become part of the attack surface, since they hold credentials and pull third-party dependencies and base images.
+
+\subsection{DevSecOps and shift-left}
+
+DevSecOps denotes the integration of security activities into the DevOps workflow so that they are performed continuously and, as far as possible, automatically. The multivocal literature review of Myrbakken and Colomo-Palacios observes that the term is used with several overlapping definitions, and identifies automation, collaboration between development, operations and security teams, and the integration of security into the delivery pipeline as recurring themes~\cite{myrbakken2017}. The expression \emph{shift-left} refers to moving verification activities towards the left of the timeline of Figure~\ref{fig:evolution}, that is, closer to the moment the code is written, so that the feedback reaches the developer while the change is still small.
+
+\begin{figure}[H]
+\centering
+\input{figures/fig2-1}
+\end{figure}
+
+%------------------------------------------------
+\section{Secure Development Frameworks and Reference Standards}
+\label{sec:frameworks}
+
+Several documents structure the discussion of what a secure development process contains. They operate at different levels: process-level frameworks (SSDF, SAMM, the OWASP DevSecOps Guideline), risk catalogues (OWASP Top 10), verification standards (ASVS) and platform-hardening baselines (CIS Benchmarks).
+
+\paragraph{NIST SP 800-218 (SSDF).} The Secure Software Development Framework published by the U.S.\ National Institute of Standards and Technology describes a set of high-level practices that can be integrated into any software development lifecycle. The practices are organised in four groups: preparing the organisation, protecting the software, producing well-secured software, and responding to vulnerabilities~\cite{nist-ssdf}. The document is deliberately technology-neutral; it asks, for example, that the source code be protected from unauthorised access, that code be reviewed or analysed for vulnerabilities, and that executable code be tested. These practices map naturally onto the controls implemented in a CI/CD pipeline.
+
+\paragraph{OWASP SAMM and the OWASP DevSecOps Guideline.} The Software Assurance Maturity Model (SAMM) is a maturity framework organised around five business functions (governance, design, implementation, verification and operations), each decomposed into security practices that an organisation can assess and improve~\cite{owasp-samm}. The OWASP DevSecOps Guideline is more operational: it describes which security checks (secrets scanning, static analysis, dependency checking, container and infrastructure scanning, dynamic testing) can be inserted at which stage of a pipeline~\cite{owasp-devsecops}. The classification used in Section~\ref{sec:testing} follows the same logic.
+
+\paragraph{OWASP Top 10 (2021).} The Top 10 is an awareness document listing the most critical categories of web application security risks, built from vulnerability data and a community survey. The 2021 edition ranks broken access control first, followed by cryptographic failures and injection, and introduces insecure design, vulnerable and outdated components, and software and data integrity failures among its categories~\cite{owasp-top10}. It is a catalogue of risks, not a compliance standard, but it provides a common vocabulary; in particular, the categories \emph{vulnerable and outdated components}, \emph{identification and authentication failures} and \emph{security misconfiguration} correspond directly to what dependency scanners, authentication design and infrastructure scanners address.
+
+\paragraph{OWASP ASVS 4.0.} The Application Security Verification Standard provides a list of verifiable requirements grouped in chapters (authentication, session management, access control, validation, cryptography, API security, configuration, and others) and three verification levels of increasing depth~\cite{owasp-asvs}. Unlike the Top 10, it is designed to be used as a checklist for specifying and verifying the security of an application, and is therefore a suitable reference when a project must state which controls it implements and which it does not.
+
+\paragraph{CIS Benchmarks.} The Center for Internet Security publishes consensus-based configuration baselines for operating systems, container runtimes and other platforms, including Ubuntu Linux and Docker~\cite{cis-benchmarks}. They list concrete settings (for instance on SSH, firewalling, audit logging, or container privileges) that configuration management tools can apply and verify. We use them in this report as a reference for the hardening of the servers and containers rather than as a certification target.
+
+%------------------------------------------------
+\section{Security of Web Applications Exposing a REST API}
+\label{sec:webappsec}
+
+A single-page application backed by a REST API concentrates the main security decisions on a few mechanisms: how users are authenticated, how credentials are stored, which origins may call the API, how input is validated and who may perform which operation.
+
+\subsection{Authentication with JSON Web Tokens}
+
+A JSON Web Token (JWT) is a compact, URL-safe representation of a set of claims that is digitally signed or integrity-protected, specified in RFC~7519~\cite{rfc7519}. In a stateless API, the server issues a signed token after a successful login and the client sends it in the \texttt{Authorization: Bearer} header of each request; the server validates the signature and the expiry claim without keeping session state. The OWASP cheat sheet on JWT lists pitfalls that implementations must avoid, such as accepting tokens with the \texttt{none} algorithm, using weak signing secrets, and issuing tokens without an expiry or without a means of revocation~\cite{owasp-jwt-cheatsheet}. Statelessness also has a cost: a token cannot be withdrawn before its expiry unless the server maintains additional state, which is why short lifetimes and refresh mechanisms are commonly recommended.
+
+The location where the browser stores the token is a well-known trade-off. A token kept in \texttt{localStorage} is readable by any JavaScript running in the page, so a cross-site scripting (XSS) flaw allows its theft; OWASP advises against storing sensitive session identifiers there~\cite{owasp-html5-cheatsheet}. A cookie flagged \texttt{HttpOnly} cannot be read by scripts, which removes this exfiltration path, but a cookie is sent automatically by the browser and therefore exposes the application to cross-site request forgery unless additional protections (\texttt{SameSite} attribute, anti-CSRF tokens) are used. Neither option is free of risk; the choice depends on the threat model, and we return to the option adopted in this project in Section~\ref{sec:positioning}.
+
+\subsection{Password storage}
+
+Passwords must never be stored in clear text or with a fast general-purpose hash. BCrypt, proposed by Provos and Mazi\`eres, is an adaptive hashing scheme based on the Blowfish cipher with a per-password salt and a configurable cost factor, so that its computation time can be increased as hardware improves~\cite{provos1999}. The OWASP Password Storage Cheat Sheet recommends memory-hard algorithms such as Argon2id first and lists BCrypt as an acceptable choice for legacy systems or when the former is unavailable~\cite{owasp-password-cheatsheet}. Spring Security provides a \texttt{PasswordEncoder} abstraction with a BCrypt implementation~\cite{spring-security}.
+
+\subsection{CORS, input validation and access control}
+
+The same-origin policy prevents a page from reading responses of another origin. Cross-Origin Resource Sharing (CORS) is the mechanism by which a server declares which origins, methods and headers it accepts. A permissive configuration (for example a wildcard origin combined with credentials) defeats the purpose of the policy, so the list of allowed origins should be explicit and limited to the deployed front-end. Spring Security integrates CORS configuration in its filter chain~\cite{spring-security}.
+
+Input validation reduces the risk of injection, the third category of the 2021 Top 10~\cite{owasp-top10}. Declarative validation of request bodies (Jakarta Bean Validation in the Java ecosystem) rejects malformed data at the API boundary, while parameterised queries, as generated by JPA repositories, prevent SQL injection by construction. Validation is a complement to, not a replacement for, output encoding in the front-end.
+
+Finally, access control is the first category of the 2021 Top 10~\cite{owasp-top10}. Role-based access control (RBAC) associates permissions with roles rather than with individual users and is supported in Spring Security through authorities and method- or request-level rules~\cite{spring-security}. ASVS requires that access control be enforced on the server side, at a trusted layer, for every request~\cite{owasp-asvs}.
+
+%------------------------------------------------
+\section{Automated Security Testing in the Pipeline}
+\label{sec:testing}
+
+\subsection{Taxonomy}
+
+Automated security tests can be classified according to the artefact they inspect, as described by the OWASP DevSecOps Guideline~\cite{owasp-devsecops}.
+
+\emph{Static Application Security Testing} (SAST) analyses source code without executing it, looking for dangerous patterns such as injection sinks or weak cryptography. It runs early and provides file and line locations, but produces false positives and cannot see runtime configuration. Semgrep is a pattern-based analyser whose rules resemble the source code they match~\cite{semgrep}.
+
+\emph{Software Composition Analysis} (SCA) identifies third-party components and compares their versions with databases of known vulnerabilities. It addresses the Top 10 category of vulnerable and outdated components~\cite{owasp-top10}. OWASP Dependency-Check does so for Java and other ecosystems from the project manifests~\cite{dependency-check}, and \texttt{npm audit} checks the dependency tree of a Node.js project against the npm advisory database~\cite{npm-audit}.
+
+\emph{Secrets detection} searches the working tree and the Git history for credentials such as API keys and tokens. Gitleaks scans repositories using regular expressions and entropy checks~\cite{gitleaks}. Since a secret committed once remains in the history, detection must be combined with rotation of any exposed credential.
+
+\emph{Container image scanning} inspects the operating system packages and application libraries contained in an image. Trivy is a scanner that covers images, file systems, and also misconfigurations in IaC files~\cite{trivy}.
+
+\emph{Infrastructure-as-code scanning} analyses Terraform or similar definitions for insecure settings, for example overly open firewall rules or unencrypted storage. tfsec is dedicated to Terraform~\cite{tfsec}, whereas Checkov covers several IaC formats with a large library of built-in policies~\cite{checkov}. \emph{Policy-as-code} goes one step further by letting the organisation write its own rules: Open Policy Agent evaluates policies written in the Rego language~\cite{opa}, and Conftest applies them to structured files, such as the JSON rendering of a Terraform plan~\cite{conftest}.
+
+\emph{Dynamic Application Security Testing} (DAST) attacks a running instance from the outside, as an attacker would, and can detect issues that only appear at runtime such as missing security headers or authentication errors. OWASP ZAP is the best-known open-source tool of this family~\cite{owasp-zap}. DAST requires a deployed environment and is slower than the other categories.
+
+None of these families is sufficient alone. SAST and SCA see the code but not its deployment; IaC scanners see the infrastructure definition but not the application; DAST sees the behaviour but cannot indicate the faulty line. Defence in depth therefore requires combining them at different pipeline stages.
+
+\subsection{Tools used in the project}
+
+Table~\ref{tab:tools} positions the tools used in the project in this taxonomy and indicates where each runs in the pipeline; Figure~\ref{fig:scanner-placement} shows the same information graphically. Commercial or hosted alternatives exist for most categories, such as SonarQube for SAST and code quality, and Snyk for SCA and container scanning; we did not use them, in order to rely exclusively on open-source tools that run inside the repository's own workflows. No DAST tool is part of the pipeline at the time of writing.
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\linewidth}{@{}l l X X@{}}
+\toprule
+\textbf{Tool} & \textbf{Category} & \textbf{What it inspects} & \textbf{Where it runs} \\
+\midrule
+Gitleaks & Secrets detection & Source tree and Git history & Backend and frontend security workflows, on push and pull request \\
+Semgrep & SAST & Java and JavaScript source code & Backend and frontend security workflows \\
+OWASP Dependency-Check & SCA & Maven dependencies (backend) & Backend security workflow \\
+npm audit & SCA & npm dependency tree (frontend) & Frontend security workflow \\
+Trivy (filesystem) & SCA, misconfiguration & Repository files and manifests & Backend and frontend security workflows \\
+Trivy (image) & Image scanning & OS packages and libraries of the built Docker image & After the image build, in the security workflows \\
+tfsec & IaC scanning & Terraform source & Terraform workflow, before plan \\
+Checkov & IaC scanning & Terraform source & Terraform workflow, before plan \\
+OPA / Conftest & Policy-as-code & JSON Terraform plan, against Rego rules & Terraform workflow after the plan; separate policy-check workflow \\
+\bottomrule
+\end{tabularx}
+\caption{Security tools of the project by category and pipeline stage}
+\label{tab:tools}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\input{figures/fig2-3}
+\end{figure}
+
+An important practical point, which we discuss in later chapters, is that a scanner provides protection only if its result has consequences: a tool configured to report without ever failing the build acts as an audit trail, not as a quality gate. Whether each step of Table~\ref{tab:tools} blocks the pipeline is therefore as relevant as the choice of the tool itself.
+
+%------------------------------------------------
+\section{Infrastructure as Code and Configuration Management}
+\label{sec:iac}
+
+Infrastructure as code (IaC) consists in describing servers, networks and their configuration in text files that are versioned, reviewed and applied by tools, instead of being configured by hand~\cite{morris2020}. It brings reproducibility and traceability, and makes it possible to apply to infrastructure the same review and testing practices as to application code.
+
+\paragraph{Terraform.} Terraform is a declarative provisioning tool: the user describes the desired resources, and Terraform computes the difference with the recorded state and produces an execution plan before applying it~\cite{terraform}. The \emph{state} maps the configuration to real resources; since it may contain sensitive values and must be shared between collaborators and pipelines, it is normally stored in a remote backend with locking rather than on a developer's workstation~\cite{terraform}. The plan is a reviewable artefact, which is precisely what allows policy tools to verify it before any change is made.
+
+\paragraph{Ansible.} Ansible is an agentless configuration management tool: it connects to the managed hosts over SSH and executes tasks described in YAML playbooks, grouped in reusable roles. Well-written modules are idempotent, meaning that running a playbook again leaves an already-configured host unchanged. Ansible Vault encrypts sensitive variables so that they can be kept in the repository without being readable in clear text~\cite{ansible-docs}. Terraform and Ansible are complementary: the former creates the machines and network objects, the latter configures what runs on them (users, SSH hardening, firewall, services).
+
+\paragraph{Policy-as-code.} Open Policy Agent decouples policy decisions from the tools that enforce them: rules are written once in Rego and evaluated against any JSON input~\cite{opa}. Applied to the output of \texttt{terraform show -json}, Conftest can reject a plan that, for instance, opens an administration port to the Internet or omits a mandatory tag~\cite{conftest}. Compared with generic scanners such as tfsec or Checkov, this approach lets the organisation encode rules specific to its context.
+
+\paragraph{Immutable infrastructure and drift.} In an immutable approach, servers are not modified in place after provisioning: a change is applied by building a new version and replacing the old one, which avoids the accumulation of undocumented manual modifications~\cite{morris2020}. \emph{Configuration drift} designates the divergence between the declared configuration and the real state of the infrastructure, typically caused by manual changes. It can be detected by comparing a plan with the actual resources on a regular basis, which is the approach adopted by scheduled drift-detection jobs in a CI platform. Strict immutability is not always achieved in practice: configuration management tools applied on long-lived hosts, as in this project, follow a convergent rather than an immutable model.
+
+%------------------------------------------------
+\section{Containers}
+\label{sec:containers}
+
+Docker packages an application and its dependencies in an image that runs identically across environments, which removes a frequent source of discrepancy between development and production. Containers share the host kernel and are therefore less isolated than virtual machines, which makes the hardening of images and runtime settings important. The Docker documentation recommends, among other practices, the use of multi-stage builds to keep build tools out of the final image, the choice of minimal and trusted base images, and the avoidance of unnecessary packages~\cite{docker-best-practices}. Running the main process as a non-root user limits the consequences of a compromise of the application, and the CIS Docker Benchmark includes this among its recommendations~\cite{cis-benchmarks}. Smaller images also reduce the number of components that image scanners may flag~\cite{trivy}. Finally, secrets should not be baked into image layers, since any user with access to the image can extract them; they should be injected at runtime.
+
+%------------------------------------------------
+\section{CI/CD Platforms and the Measurement of Delivery Performance}
+\label{sec:cicd}
+
+\subsection{Platforms}
+
+A CI/CD platform executes the build, test, scan and deployment steps on each change. GitHub Actions defines workflows as YAML files stored in the repository and triggered by events such as pushes, pull requests or schedules, with a marketplace of reusable actions~\cite{github-actions}. GitLab CI/CD is integrated into the GitLab platform and configured by a \texttt{.gitlab-ci.yml} file~\cite{gitlab-ci}. Jenkins is a self-hosted automation server extended through plugins and configured with pipeline scripts~\cite{jenkins}. Table~\ref{tab:cicd} summarises the main differences.
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\linewidth}{@{}l X X X@{}}
+\toprule
+ & \textbf{GitHub Actions} & \textbf{GitLab CI/CD} & \textbf{Jenkins} \\
+\midrule
+Hosting model & Hosted runners, self-hosted runners possible & Hosted or self-managed instance & Self-hosted server \\
+Pipeline definition & YAML workflows in the repository & Single YAML file in the repository & Jenkinsfile (Groovy-based) or UI jobs \\
+Reuse mechanism & Marketplace actions, reusable workflows & Includes, templates & Plugins, shared libraries \\
+Integration with repository & Native with GitHub & Native with GitLab & Through plugins and webhooks \\
+Operational burden & Low on hosted runners & Low to medium & High (server and plugin maintenance) \\
+\bottomrule
+\end{tabularx}
+\caption{Comparison of three common CI/CD platforms}
+\label{tab:cicd}
+\end{table}
+
+For this project, the source code is hosted on GitHub; using GitHub Actions avoids operating a separate server and allows the scanners to publish their findings in the repository's security view. The comparison above is qualitative and not exhaustive; the three platforms can all implement the pipeline described in this report.
+
+\subsection{Measuring delivery performance}
+
+Pipeline automation is a means, not a goal. Forsgren et al.\ propose four measures of software delivery performance: the lead time for changes, the deployment frequency, the time to restore service, and the change failure rate~\cite{forsgren2018}, commonly called the DORA metrics. They capture both throughput and stability, and the authors report that the two are not in opposition for the organisations they surveyed. These metrics require sustained operation and production data over time; in this report we use them as a conceptual frame for discussing the delivery process rather than as figures we claim to have measured.
+
+%------------------------------------------------
+\section{Positioning of Our Work}
+\label{sec:positioning}
+
+The literature and tools reviewed above are individually well documented. Our contribution is not a new technique, but a reproducible engineering case study: it assembles, for a small delivery-tracking web application, a representative set of these practices in a single repository and applies them end to end.
+
+Concretely, the project combines a Spring Boot REST API secured by JWT bearer authentication and a React front-end; container images built from multi-stage Dockerfiles; Terraform for provisioning on DigitalOcean and Ansible roles for host configuration (user management, SSH hardening, firewall, fail2ban, Docker runtime, node exporter); and GitHub Actions workflows that run secrets detection, SAST, SCA, image scanning, IaC scanning and an OPA policy check on the Terraform plan (Table~\ref{tab:tools}). The treatment of each of these elements follows the references of Sections~\ref{sec:frameworks} to~\ref{sec:cicd}.
+
+The work also has clear limits, which we state here and examine in the following chapters. The authentication is limited to a single fixed account rather than a full role model, so RBAC is discussed as background rather than demonstrated; the token is stored in the browser's \texttt{localStorage}, which is the first option discussed in Section~\ref{sec:webappsec} and carries the XSS exposure described there; some scanners report findings without failing the pipeline; no DAST stage is present; and the application has only been exercised in a development and demonstration setting, so no claim of conformance to ASVS, SSDF or any regulatory framework is made. These points are discussed in the evaluation and discussion chapters.

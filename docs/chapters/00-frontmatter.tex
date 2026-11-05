@@ -1,0 +1,87 @@
+%========================================================================================
+%   Front matter: dedication, acknowledgements, abstracts, lists, acronyms
+%========================================================================================
+\pagenumbering{roman}
+\setcounter{page}{1}
+
+% ---------------- Dedication ----------------
+\chapter*{Dedication}
+\addcontentsline{toc}{chapter}{Dedication}
+\markboth{Dedication}{}
+\needsinput{Dedication text (written by the authors).}
+\clearpage
+
+% ---------------- Acknowledgements ----------------
+\chapter*{Acknowledgements}
+\addcontentsline{toc}{chapter}{Acknowledgements}
+\markboth{Acknowledgements}{}
+\needsinput{Acknowledgements: supervisor Mrs.\ Latifa Makhlouf, host company Youssra Trans-N\'egoce, ENSA teaching staff, family. Names to be provided by the authors.}
+\clearpage
+
+% ---------------- Abstract ----------------
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+\markboth{Abstract}{}
+\needsinput{English abstract (about 200--250 words) summarising context, problem, approach (DevSecOps pipeline, IaC, secure application), main results and keywords. Write it last, once the final results are known.}
+
+\textbf{Keywords:} \placeholder{keywords}
+\clearpage
+
+% ---------------- Résumé ----------------
+\begin{otherlanguage}{french}
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+\markboth{Résumé}{}
+\needsinput{Résumé en français (traduction de l'abstract) et mots-clés.}
+
+\textbf{Mots-clés :} \placeholder{mots-clés}
+\end{otherlanguage}
+\clearpage
+
+% ---------------- Tables of contents and lists ----------------
+\tableofcontents
+\clearpage
+\listoffigures
+\addcontentsline{toc}{chapter}{List of Figures}
+\clearpage
+\listoftables
+\addcontentsline{toc}{chapter}{List of Tables}
+\clearpage
+
+% ---------------- List of acronyms ----------------
+\chapter*{List of Acronyms}
+\addcontentsline{toc}{chapter}{List of Acronyms}
+\markboth{List of Acronyms}{}
+\begin{acronym}[WWWWWWWW]
+  \acro{API}{Application Programming Interface}
+  \acro{CD}{Continuous Delivery / Deployment}
+  \acro{CI}{Continuous Integration}
+  \acro{CORS}{Cross-Origin Resource Sharing}
+  \acro{CRUD}{Create, Read, Update, Delete}
+  \acro{CSP}{Content Security Policy}
+  \acro{DAST}{Dynamic Application Security Testing}
+  \acro{DNS}{Domain Name System}
+  \acro{DTO}{Data Transfer Object}
+  \acro{ENSA}{\'Ecole Nationale des Sciences Appliqu\'ees}
+  \acro{HSTS}{HTTP Strict Transport Security}
+  \acro{HTTP}{Hypertext Transfer Protocol}
+  \acro{IaC}{Infrastructure as Code}
+  \acro{JPA}{Jakarta Persistence API}
+  \acro{JWT}{JSON Web Token}
+  \acro{OPA}{Open Policy Agent}
+  \acro{ORM}{Object-Relational Mapping}
+  \acro{OWASP}{Open Worldwide Application Security Project}
+  \acro{PFE}{Projet de Fin d'\'Etudes (Final Year Project)}
+  \acro{RBAC}{Role-Based Access Control}
+  \acro{REST}{Representational State Transfer}
+  \acro{SAST}{Static Application Security Testing}
+  \acro{SCA}{Software Composition Analysis}
+  \acro{SDLC}{Software Development Life Cycle}
+  \acro{SPA}{Single-Page Application}
+  \acro{SSH}{Secure Shell}
+  \acro{TLS}{Transport Layer Security}
+  \acro{UFW}{Uncomplicated Firewall}
+  \acro{UML}{Unified Modeling Language}
+  \acro{VPC}{Virtual Private Cloud}
+\end{acronym}
+\clearpage

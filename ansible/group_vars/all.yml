@@ -1,0 +1,111 @@
+# Global variables for all hosts
+
+# Ansible connection settings - FIXED
+ansible_user: "{{ ansible_service_user | default('ansible') }}"
+ansible_become: true              
+ansible_become_method: sudo      
+ansible_become_user: root       
+ansible_ssh_private_key_file: "{{ lookup('env', 'HOME') }}/.ssh/digitalocean"
+ansible_python_interpreter: /usr/bin/python3
+
+# Service user configuration
+ansible_service_user: "ansible"
+ansible_service_user_shell: "/bin/bash"
+ansible_service_user_groups: ["sudo", "docker"]
+ansible_service_user_create_home: true
+
+# Common packages
+common_packages:
+  - curl
+  - wget
+  - htop
+  - vim
+  - git
+  - unzip
+  - ca-certificates
+  - gnupg
+  - lsb-release
+
+# Security settings
+security:
+  ssh_port: 22
+  disable_root_login: true  # We're using root for simplicity, but could change to sudo user
+  disable_password_auth: true
+  fail2ban_enabled: true
+  ufw_enabled: true
+
+# Docker settings
+docker:
+  version: "latest"
+  users: ["root"]
+  daemon_options:
+    log-driver: "json-file"
+    log-opts:
+      max-size: "10m"
+      max-file: "3"
+
+# Application settings
+app:
+  name: "delivery-tracker"
+  port: 8080
+  frontend_port: 80
+  https_port: 443
+  domain: "3assasa.software"
+
+# Registry settings
+# CI (ci-back.yaml / ci-front.yaml) pushes to GHCR:
+#   ghcr.io/<github owner>/spring-boot-backend:<sha>-staging
+#   ghcr.io/<github owner>/react-frontend:<sha>-staging
+registry:
+  url: "ghcr.io"
+  namespace: "oubellaismail"
+
+# SSL/TLS
+ssl:
+  email: "admin@3assasa.software"
+  cert_path: "/etc/ssl/certs"
+  key_path: "/etc/ssl/private"
+
+# Backup settings
+backup:
+  enabled: yes
+  retention_days: 30
+
+# Monitoring
+monitoring:
+  enabled: yes
+  metrics_port: 9090
+
+# Timezone
+timezone: "UTC"
+
+# System limits
+system_limits:
+  soft_nofile: 65536
+  hard_nofile: 65536
+
+ssh_hardening:
+  permit_root_login: "no"
+  password_authentication: "no"
+  pubkey_authentication: "yes"
+  challenge_response_authentication: "no"
+  use_pam: "yes"
+  x11_forwarding: "no"
+  max_auth_tries: 3
+  allow_users: ["ansible"]
+  client_alive_interval: 300
+  client_alive_count_max: 2
+
+fail2ban:
+  enabled: yes
+  bantime: 3600
+  findtime: 600
+  maxretry: 3
+  jails:
+    - name: sshd
+      enabled: yes
+      port: "22"
+      filter: sshd
+      logpath: /var/log/auth.log
+      maxretry: 3
+      bantime: 3600

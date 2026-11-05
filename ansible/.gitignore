@@ -9,3 +9,5 @@ retry/
 terraform.tfstate
 terraform_outputs.json
 inventories/from_terraform.yml
+# Ansible Vault password — never commit
+.vault_pass

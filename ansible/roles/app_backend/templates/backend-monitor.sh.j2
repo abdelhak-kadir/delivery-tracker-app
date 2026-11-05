@@ -1,5 +1,5 @@
 #!/bin/bash
-SERVICE_URL="http://localhost:{{ app.port }}/health"
+SERVICE_URL="http://localhost:{{ app.port }}{{ containers.backend.health_check.path }}"
 LOG_FILE="/var/log/{{ app.name }}/backend-monitor.log"
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL")
 

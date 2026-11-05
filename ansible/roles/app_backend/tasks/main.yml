@@ -24,6 +24,14 @@
     group: "{{ app.name }}"
     mode: '0644'
 
+- name: Install database migration script
+  template:
+    src: migrate-db.sh.j2
+    dest: "/opt/{{ app.name }}/backend/migrate-db.sh"
+    owner: "{{ app.name }}"
+    group: "{{ app.name }}"
+    mode: '0755'
+
 - name: Start backend application
   community.docker.docker_compose_v2:
     project_src: "/opt/{{ app.name }}/backend"
@@ -35,7 +43,7 @@
 
 - name: Wait for backend to be healthy
   uri:
-    url: "http://localhost:{{ app.port }}/health"
+    url: "http://localhost:{{ app.port }}{{ containers.backend.health_check.path }}"
     method: GET
     status_code: 200
   retries: 10
@@ -45,7 +53,8 @@
 
 - name: Run database migrations
   command: "/opt/{{ app.name }}/backend/migrate-db.sh"
-  when: run_migrations | default(true)
+  # The backend has no migration tool (schema is managed by Hibernate ddl-auto); opt in explicitly.
+  when: run_migrations | default(false)
   tags: ['migrations', 'database']
 
 - name: Create backend monitoring script

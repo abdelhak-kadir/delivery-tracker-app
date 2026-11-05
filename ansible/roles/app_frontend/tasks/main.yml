@@ -11,6 +11,16 @@
     src: docker-compose-frontend.yml.j2
     dest: "/opt/{{ app.name }}/frontend/docker-compose.yml"
 
+- name: Install frontend nginx snippets
+  template:
+    src: "{{ item }}.j2"
+    dest: "/etc/nginx/snippets/{{ item }}"
+    mode: '0644'
+  loop:
+    - frontend-security.conf
+    - frontend-cache.conf
+  notify: reload nginx
+
 - name: Create nginx configuration for frontend
   template:
     src: frontend-nginx.conf.j2
@@ -28,4 +38,4 @@
   community.docker.docker_compose_v2:
     project_src: "/opt/{{ app.name }}/frontend"
     state: present
-    pull: yes
+    pull: always

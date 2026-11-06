@@ -7,7 +7,7 @@
   lbl/.style={font=\scriptsize, text=Egray, align=center}]
 \node[st] (tf) {\texttt{terraform apply}\\{\scriptsize remote state, org 3assasa}};
 \node[st, right=1.8cm of tf] (out) {\texttt{terraform output -json}\\{\scriptsize terraform\_outputs.json}};
-\node[st, right=1.8cm of out] (gen) {\texttt{generate\_inventory.py}\\{\scriptsize inventories/}\\{\scriptsize from\_terraform.yml}};
+\node[st, right=1.8cm of out] (gen) {{\footnotesize\texttt{generate\_inventory.py}}\\{\scriptsize inventories/}\\{\scriptsize from\_terraform.yml}};
 \node[st, below=1.8cm of gen] (ans) {\texttt{ansible-playbook}\\{\scriptsize bootstrap / deploy / verify}};
 \node[ext, left=1.8cm of ans] (vault) {Ansible Vault\\{\scriptsize group\_vars/<env>/}\\{\scriptsize vault.yml}};
 \node[st, left=1.8cm of vault] (hosts) {Droplets\\{\scriptsize via bastion (ProxyJump)}};

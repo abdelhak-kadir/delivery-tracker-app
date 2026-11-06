@@ -4,7 +4,7 @@
 
 \chapter{Host Organization and Project Context}\label{chap:context}
 
-This chapter presents the company that hosted the internship, the problem that motivated the project, its objectives and scope, and the way the work was planned and organised.
+This chapter presents the company that hosted the internship, the problem that motivated the project, its objectives and scope, and the way the work was planned and organized.
 
 \section{Host Organization: Youssra Trans-Négoce}
 
@@ -33,16 +33,16 @@ The operational knowledge of the company rests on its staff: a senior collaborat
 
 \input{figures/fig1-1}
 
-\needsinput{Provide (or authorise us to draw) an organisation chart of the company: management, dispatch, drivers, administration. A placeholder box can be replaced by the real chart.}
+\needsinput{Provide (or authorize us to draw) an organization chart of the company: management, dispatch, drivers, administration. A placeholder box can be replaced by the real chart.}
 
 %------------------------------------------------
 \section{Context and Problem Statement}
 
-The activity of a transport company produces, for every trip, a set of data that must be recorded accurately because it determines the cost and the price of the service. In the data model of our application, a transport log contains the loading date and location, the unloading date and location, the destination, the delivery note, the advance given to the driver, the fuel quantity and price per litre, a variable charge and its price, the tariff applied to the client, the trip price, the operator and the commercial in charge. Each log is linked to one client and one driver.
+The activity of a transport company produces, for every trip, a set of data that must be recorded accurately because it determines the cost and the price of the service. In the data model of our application, a transport log contains the loading date and location, the unloading date and location, the destination, the delivery note, the advance given to the driver, the fuel quantity and price per liter, a variable charge and its price, the tariff applied to the client, the trip price, the operator and the commercial in charge. Each log is linked to one client and one driver.
 
 \needsinput{Describe how these operations were tracked before the project (paper, spreadsheet, phone calls, an existing tool?), who entered the data, and which concrete difficulties resulted (errors, lost delivery notes, delays in invoicing). The text below is written on the assumption that tracking was manual and must be corrected if it was not.}
 
-Our working assumption is that this information was kept manually, which makes it hard to search, to consolidate per client or per driver, and to protect against loss or unauthorised access. Replacing it with a web application raises a second question, which motivates the DevSecOps orientation of the project: the application manipulates identities of clients, prices and tariffs, and is exposed on the Internet. Four concerns follow from this.
+Our working assumption is that this information was kept manually, which makes it hard to search, to consolidate per client or per driver, and to protect against loss or unauthorized access. Replacing it with a web application raises a second question, which motivates the DevSecOps orientation of the project (Figure~\ref{fig:devsecops-lifecycle}): the application manipulates identities of clients, prices and tariffs, and is exposed on the Internet. Four concerns follow from this.
 
 \begin{itemize}
     \item \textbf{Data sensitivity:} client, driver and pricing records must be protected by authentication and access control.
@@ -67,7 +67,7 @@ The general objective is to build a web application for the management of client
 %------------------------------------------------
 \section{Scope and Limitations}
 
-The project covers the creation, consultation, update and deletion of clients, drivers and transport logs, authentication with JWT, the React user interface, the PostgreSQL schema and its validation rules, container packaging, infrastructure as code, and the continuous-integration pipeline with its security scans. Continuous delivery is only partly automated: the frontend delivery workflow is currently a placeholder, and the backend delivery workflow connects to the server over SSH to pull and start the new images with Docker Compose. The Ansible playbooks, which configure the servers and deploy the containers, were checked for syntax but were not run against real servers during the final revision of the code, and no dynamic application security testing was performed.
+The project covers the creation, consultation, update and deletion of clients, drivers and transport logs, authentication with JWT, the React user interface, the PostgreSQL schema and its validation rules, container packaging, infrastructure as code, and the continuous-integration pipeline with its security scans (Table~\ref{tab:scope}). Continuous delivery is only partly automated: the frontend delivery workflow is currently a placeholder, and the backend delivery workflow connects to the server over SSH to pull and start the new images with Docker Compose. The Ansible playbooks, which configure the servers and deploy the containers, were checked for syntax but were not run against real servers during the final revision of the code, and no dynamic application security testing was performed.
 
 Monitoring is limited. An Ansible role deploys the Prometheus node exporter on the servers, so that basic host metrics are available; complete monitoring and alerting dashboards, however, are out of scope. GPS tracking and geolocation, a mobile application, analytics dashboards, Kubernetes orchestration and multi-cloud deployment are also excluded.
 
@@ -102,13 +102,13 @@ The system follows a three-tier architecture. The frontend is a React single-pag
 \section{Project Planning}
 \label{sec:planning}
 
-The internship lasted one month and was carried out by a team of two students. Since the time was short, we organised the work in four weeks and overlapped the phases where the two members could work in parallel. Figure~\ref{fig:gantt} shows the phases we distinguished. The repository history spans a longer period than the internship itself, since the project was started and extended outside the internship window; for this reason we do not attach calendar dates to the chart and express it in weeks. The phases are inferred from the topics of the commits: analysis and project setup, backend development, frontend development, continuous integration and security scans, infrastructure with Terraform and Ansible, and report writing.
+The internship lasted one month and was carried out by a team of two students. Since the time was short, we organized the work in four weeks and overlapped the phases where the two members could work in parallel. Figure~\ref{fig:gantt} shows the phases we distinguished. The repository history spans a longer period than the internship itself, since the project was started and extended outside the internship window; for this reason we do not attach calendar dates to the chart and express it in weeks. The phases are inferred from the topics of the commits: analysis and project setup, backend development, frontend development, continuous integration and security scans, infrastructure with Terraform and Ansible, and report writing.
 
 \begin{figure}[H]
 \centering
 \begin{adjustbox}{max width=\linewidth}
 \begin{ganttchart}[
-    hgrid, vgrid={*{1}{draw=none},dotted},
+    hgrid, vgrid={dotted},
     x unit=1.4cm, y unit chart=0.7cm, y unit title=0.6cm,
     title height=1, bar height=0.5,
     bar/.append style={fill=Eblue!70},
@@ -140,15 +140,15 @@ The project was carried out by Ait Kadir Abdelhak and Oubella Ismail under the a
 %------------------------------------------------
 \section{Report Structure}
 
-The remainder of this document is organised as follows.
+The remainder of this document is organized as follows.
 Chapter~\ref{chap:sota} reviews the state of the art on DevSecOps, its practices and its tools.
-Chapter~\ref{chap:requirements} analyses the requirements of the application and of the delivery pipeline.
+Chapter~\ref{chap:requirements} analyzes the requirements of the application and of the delivery pipeline.
 Chapter~\ref{chap:design} presents the design: architecture, data model, security mechanisms and infrastructure.
 Chapter~\ref{chap:implementation} describes the implementation of the backend, the frontend, the containers, the infrastructure and the pipelines.
 Chapter~\ref{chap:results} presents and evaluates the results.
-Chapter~7 reports the challenges encountered and the solutions adopted.
-Chapter~8 discusses the limits of the work.
-Chapter~9 concludes and proposes future work.
+Chapter~\ref{chap:challenges} reports the challenges encountered and the solutions adopted.
+Chapter~\ref{chap:discussion} discusses the limits of the work.
+Chapter~\ref{chap:conclusion} concludes and proposes future work.
 The bibliography and the appendices close the report.
 
 \input{figures/fig1-4}

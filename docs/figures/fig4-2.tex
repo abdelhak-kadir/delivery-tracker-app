@@ -1,32 +1,33 @@
 \begin{figure}[H]
 \centering
 \begin{adjustbox}{max width=\linewidth}
+\setlength{\tabcolsep}{9pt}
 \begin{tikzpicture}[>=latex, thick,
   cls/.style={draw=Eblue, fill=white, inner sep=0pt, font=\footnotesize},
   lbl/.style={font=\scriptsize, fill=white, inner sep=1pt}]
 
-\node[cls, anchor=north east] (client) at (-6.0,0) {%
-\begin{tabular}{|p{3.7cm}|}\hline
-\multicolumn{1}{|>{\centering\arraybackslash}p{3.7cm}|}{\scriptsize\textit{<<Entity>>}}\\
-\multicolumn{1}{|>{\centering\arraybackslash}p{3.7cm}|}{\textbf{Client}}\\\hline
+\node[cls, anchor=north east] (client) at (-5.2,0) {%
+\begin{tabular}{p{3.9cm}}\hline
+\multicolumn{1}{>{\centering\arraybackslash}p{3.9cm}}{\scriptsize\textit{<<Entity>>}}\\
+\multicolumn{1}{>{\centering\arraybackslash}p{3.9cm}}{\textbf{Client}}\\\hline
 \texttt{-id : Long} \textit{(PK)}\\
 \texttt{-name : String}\\
 \texttt{-identityId : String}\\\hline
 \end{tabular}};
 
-\node[cls, anchor=north west] (driver) at (6.0,0) {%
-\begin{tabular}{|p{3.7cm}|}\hline
-\multicolumn{1}{|>{\centering\arraybackslash}p{3.7cm}|}{\scriptsize\textit{<<Entity>>}}\\
-\multicolumn{1}{|>{\centering\arraybackslash}p{3.7cm}|}{\textbf{Driver}}\\\hline
+\node[cls, anchor=north west] (driver) at (5.2,0) {%
+\begin{tabular}{p{3.9cm}}\hline
+\multicolumn{1}{>{\centering\arraybackslash}p{3.9cm}}{\scriptsize\textit{<<Entity>>}}\\
+\multicolumn{1}{>{\centering\arraybackslash}p{3.9cm}}{\textbf{Driver}}\\\hline
 \texttt{-id : Long} \textit{(PK)}\\
 \texttt{-name : String}\\
 \texttt{-plateNumber : String}\\\hline
 \end{tabular}};
 
 \node[cls, anchor=north] (log) at (0,0) {%
-\begin{tabular}{|p{5.3cm}|}\hline
-\multicolumn{1}{|>{\centering\arraybackslash}p{5.3cm}|}{\scriptsize\textit{<<Entity>>}}\\
-\multicolumn{1}{|>{\centering\arraybackslash}p{5.3cm}|}{\textbf{TransportLog}}\\\hline
+\begin{tabular}{p{5.7cm}}\hline
+\multicolumn{1}{>{\centering\arraybackslash}p{5.7cm}}{\scriptsize\textit{<<Entity>>}}\\
+\multicolumn{1}{>{\centering\arraybackslash}p{5.7cm}}{\textbf{TransportLog}}\\\hline
 \texttt{-id : Long} \textit{(PK)}\\
 \texttt{-client : Client}\\
 \texttt{-driver : Driver}\\

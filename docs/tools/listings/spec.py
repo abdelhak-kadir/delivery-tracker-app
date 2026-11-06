@@ -12,7 +12,7 @@ add('security-config',J+'config/SecurityConfig.java',[(r'public SecurityFilterCh
 add('jwt-filter',J+'config/JwtAuthenticationFilter.java',[(r'String path = ',r'setAuthentication\(authentication\)'),'=    }',(r'\} catch \(Exception ex\)',None,1),'=    // ...','=}'],'Java','Bearer-token filter (excerpt)',skipre=r'^\s*//')
 add('jwt-provider',J+'config/JwtTokenProvider.java',[(r'public String generateToken',r'^    }')],'Java','Token generation with jjwt')
 add('user-details',J+'service/serviceimpl/SimpleUserDetailsService.java',[(r'@PostConstruct',r'^    }'),(r'^        // Return Spring',r'^    }')],'Java','The configured user, password hashed with BCrypt at start-up (excerpt)')
-add('exception',J+'exception/GlobalExceptionHandler.java',[(r'@ExceptionHandler\(ResourceNotFoundException',r'^    }')],'Java','Centralised error mapping')
+add('exception',J+'exception/GlobalExceptionHandler.java',[(r'@ExceptionHandler\(ResourceNotFoundException',r'^    }')],'Java','Centralized error mapping')
 add('error-response',J+'exception/ErrorResponse.java',[(r'public record',r'^\)')],'Java','Uniform error body')
 add('test-service',T+'service/serviceimpl/DriverServiceImplTest.java',[(r'^@ExtendWith',r'private DriverServiceImpl'),(r'when\(driverMapper.toEntity',r'when\(driverMapper.toDto'),(r'DriverResponse actualResponse',r'^    }'),(r'^}',None,1)],'Java','Mockito unit test of the service layer (excerpt)')
 add('test-controller',T+'controller/v1/DriverControllerTest.java',[(r'^@WebMvcTest',r'DriverService driverService;'),'=    @Test',(r'@DisplayName\("POST /api/v1/drivers should return HTTP 400',r'^    }'),(r'^}',None,1)],'Java','MockMvc slice test of the Driver controller (excerpt)')

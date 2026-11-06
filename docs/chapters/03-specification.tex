@@ -14,7 +14,7 @@ The host company is a road-transport and trading business whose day-to-day activ
 We identified three needs from this activity.
 
 \begin{itemize}
-    \item \textbf{Centralised records.} Clients, drivers and trips must be stored in one shared, structured place instead of scattered documents.
+    \item \textbf{Centralized records.} Clients, drivers and trips must be stored in one shared, structured place instead of scattered documents.
     \item \textbf{Controlled access.} The records contain commercial data (client identities, tariffs, prices); only an authenticated person of the company may read or modify them.
     \item \textbf{A reproducible, secure way to run the system.} Because the data is sensitive, the application must be built, scanned, deployed and operated through automated and repeatable procedures. This need links the application to the DevSecOps subject of the project, whose concepts are introduced in Chapter~\ref{chap:sota}.
 \end{itemize}
@@ -53,7 +53,7 @@ The use-case diagram in Figure~\ref{fig:use-cases} groups the interactions in tw
 
 \input{figures/fig3-2}
 
-Table~\ref{tab:use-cases} summarises each use case with its trigger and outcome.
+Table~\ref{tab:use-cases} summarizes each use case with its trigger and outcome.
 
 \begin{table}[H]
 \centering
@@ -89,11 +89,11 @@ The functional requirements of Table~\ref{tab:fr} were derived from the controll
 \begin{longtable}{@{}p{1.1cm}>{\raggedright\arraybackslash}p{7.4cm}>{\raggedright\arraybackslash}p{4.2cm}p{1.5cm}@{}}
 \caption{Functional requirements}\label{tab:fr}\\
 \toprule
-\textbf{ID} & \textbf{Requirement} & \textbf{Realised by} & \textbf{UC} \\
+\textbf{ID} & \textbf{Requirement} & \textbf{Realized by} & \textbf{UC} \\
 \midrule
 \endfirsthead
 \toprule
-\textbf{ID} & \textbf{Requirement} & \textbf{Realised by} & \textbf{UC} \\
+\textbf{ID} & \textbf{Requirement} & \textbf{Realized by} & \textbf{UC} \\
 \midrule
 \endhead
 \bottomrule
@@ -184,7 +184,7 @@ Frontend & React, React DOM & Single-page application; React 19.1 \\
  & Axios & HTTP client with request interceptor; version 1.11 \\
  & Create React App (react-scripts) & Build and test tooling; version 5.0.1 \\
 Data & PostgreSQL & Managed cluster in the cloud (version 16 requested in Terraform); PostgreSQL 16 container for local runs \\
-Runtime & Docker, Docker Compose, Nginx & Containerisation of both tiers; Nginx serves the React build and proxies \texttt{/api/} \\
+Runtime & Docker, Docker Compose, Nginx & Containerization of both tiers; Nginx serves the React build and proxies \texttt{/api/} \\
 Infrastructure & Terraform, DigitalOcean provider & Terraform $\geq$ 1.5 (1.9.5 in CI); provider \texttt{digitalocean} \texttt{\textasciitilde{}>}~2.43; Terraform Cloud remote backend \\
  & Open Policy Agent, Conftest, tfsec, Checkov & Policy and static analysis of the Terraform plan \\
 Configuration & Ansible, Ansible Vault & Roles for hardening and deployment; per-environment encrypted variables \\
@@ -198,8 +198,8 @@ Security tools & Gitleaks, Semgrep, OWASP Dependency-Check, npm audit, Trivy & S
 
 \paragraph{Time.} The internship lasted one month. This constraint explains the choices below and the parts that are kept deliberately simple.
 
-\paragraph{Scope included.} The business application (authentication, clients, drivers, transport logs, dashboard), its containerisation, the Terraform description of a staging and a production environment, the Ansible roles to harden and deploy the servers, and the GitHub Actions workflows for tests, security scans and infrastructure checks.
+\paragraph{Scope included.} The business application (authentication, clients, drivers, transport logs, dashboard), its containerization, the Terraform description of a staging and a production environment, the Ansible roles to harden and deploy the servers, and the GitHub Actions workflows for tests, security scans and infrastructure checks.
 
-\paragraph{Scope excluded.} The application has no user management: there is no registration, no user table, no password reset and no refresh token. Authorisation is limited to one role. Business computations (automatic trip price, reports, exports), notifications and tracking of goods in real time are not part of the project. The delivery of the frontend is not automated beyond the build and the image publication, and a complete continuous-deployment chain is not claimed; these limits are discussed with the implementation.
+\paragraph{Scope excluded.} The application has no user management: there is no registration, no user table, no password reset and no refresh token. Authorization is limited to one role. Business computations (automatic trip price, reports, exports), notifications and tracking of goods in real time are not part of the project. The delivery of the frontend is not automated beyond the build and the image publication, and a complete continuous-deployment chain is not claimed; these limits are discussed with the implementation.
 
 \needsinput{Confirm with the host company which of the business needs listed in the problem statement they actually expressed (for example invoicing or cost control) and whether additional reports or exports were requested; this determines whether the exclusions above are compatible with the stated needs.}

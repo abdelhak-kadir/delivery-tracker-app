@@ -2,13 +2,13 @@
 \centering
 \begin{tikzpicture}
 \begin{axis}[
-    ybar, bar width=11pt,
-    width=0.92\linewidth, height=6.2cm,
-    ylabel={Latency (ms)}, ymin=0, ymax=200,
+    ybar, bar width=19pt,
+    width=\linewidth, height=6.8cm,
+    ylabel={Latency (ms)}, ymin=0,
     symbolic x coords={clients,drivers,trans\_logs,login,{401 (no token)}},
-    xtick=data, x tick label style={font=\footnotesize},
-    enlarge x limits=0.15,
-    nodes near coords, nodes near coords style={font=\scriptsize},
+    xtick=data, x tick label style={font=\footnotesize,align=center},
+    enlarge x limits=0.14, ymax=215,
+    nodes near coords, nodes near coords style={font=\scriptsize,/pgf/number format/fixed,/pgf/number format/fixed zerofill,/pgf/number format/precision=1,yshift=1pt},
     legend style={at={(0.02,0.97)},anchor=north west,font=\footnotesize},
     ymajorgrids, grid style={dotted,gray!50}
 ]

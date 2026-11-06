@@ -42,7 +42,7 @@ The Swagger UI is expected to be shown in Figure~\ref{fig:swagger}. The capture 
 \screenshot[0.85\linewidth]{swagger-ui-ok.png}{Swagger UI listing the endpoints of the API (to be re-captured).}{fig:swagger}
 \needsinput{Re-capture the Swagger UI (\texttt{/swagger-ui/index.html}) showing the endpoint list, and save it as \texttt{swagger-ui-ok.png}; the current \texttt{swagger-ui.png} shows a loading error.}
 
-\subsection{API Behaviour}\label{sec:res-api}
+\subsection{API Behavior}\label{sec:res-api}
 
 The API was exercised with an authenticated script (\texttt{api-crud.txt}) and unauthenticated \texttt{curl} calls (\texttt{http-401.txt}) against the local stack. Table~\ref{tab:fr-trace} relates each functional requirement of Table~\ref{tab:fr} to the evidence collected. Requirements FR-14 to FR-16 concern the delivery pipeline and are addressed in Section~\ref{sec:res-ci} and Section~\ref{sec:res-synthesis}.
 
@@ -71,7 +71,7 @@ FR-13 & Health endpoint \texttt{UP} without authentication (Figure~\ref{fig:actu
 
 \subsection{Backend Tests}
 
-The command \texttt{./mvnw clean verify} ran 82 tests in 13 classes with no failure, error or skipped test, and ended with \texttt{BUILD SUCCESS} after 54.6~s (Table~\ref{tab:tests}). The suite combines unit tests of the services, web-layer tests of the controllers, repository tests, an integration test of the driver module and an integration test of the security configuration (seven tests on authentication and CORS behaviour).
+The command \texttt{./mvnw clean verify} ran 82 tests in 13 classes with no failure, error or skipped test, and ended with \texttt{BUILD SUCCESS} after 54.6~s (Table~\ref{tab:tests}). The suite combines unit tests of the services, web-layer tests of the controllers, repository tests, an integration test of the driver module and an integration test of the security configuration (seven tests on authentication and CORS behavior).
 
 \begin{table}[H]
 \centering\small
@@ -132,7 +132,7 @@ The frontend test run (\texttt{npm test}) reports two passing tests, but both ar
 %------------------------------------------------
 \section{Security Evaluation}\label{sec:res-security}
 
-\subsection{Behaviour of the Running Application}
+\subsection{Behavior of the Running Application}
 
 Table~\ref{tab:sec-api} lists the security checks performed against the local stack. All produced the expected answer. The wrong-password and missing-token cases return the same JSON error format as the other failures, and the invalid-token case is logged by the backend (Figure~\ref{fig:security-logs}). The CORS preflight accepts the configured origin \texttt{http://localhost:3000} and rejects an unknown origin with \texttt{Invalid CORS request}. Responses carry \texttt{X-Content-Type-Options}, \texttt{X-Frame-Options: DENY} and \texttt{Cache-Control: no-store} headers.
 
@@ -169,7 +169,7 @@ The backend container runs as user \texttt{app} (uid 999) and the frontend conta
 
 \subsection{Scanner Results}
 
-Table~\ref{tab:scans} summarises the scans run on the current code. All local scans used the tool versions and databases available on the evaluation date; vulnerability counts are \emph{entries} of the reports, which may list the same CVE for several packages or paths.
+Table~\ref{tab:scans} summarizes the scans run on the current code. All local scans used the tool versions and databases available on the evaluation date; vulnerability counts are \emph{entries} of the reports, which may list the same CVE for several packages or paths.
 
 \begin{table}[H]
 \centering\small
@@ -343,12 +343,12 @@ CI Frontend, \texttt{security-scans / security-gate} & 18445560020 & 64 \\
 \screenshot{ansible.png}{Output of the Ansible playbook configuring the servers.}{fig:ansible}
 \needsinput{Screenshot of a real Ansible playbook run against the servers, saved as \texttt{ansible.png}.}
 
-Figures~\ref{fig:ghactions} to~\ref{fig:ghsecurity} are expected to complement Tables~\ref{tab:ci-rates}, \ref{tab:ci-jobs} and~\ref{tab:scans}.
+Figures~\ref{fig:ghactions}, \ref{fig:ghactions-sec} and~\ref{fig:ghsecurity} are expected to complement Tables~\ref{tab:ci-rates}, \ref{tab:ci-jobs} and~\ref{tab:scans}.
 
 %------------------------------------------------
 \section{Synthesis}\label{sec:res-synthesis}
 
-Table~\ref{tab:synthesis} summarises the results against the objectives stated in Chapter~\ref{chap:context}. ``Achieved'' means that the evidence above supports the objective, ``partial'' that part of it is supported or that the evidence is incomplete, and ``not achieved'' that the evidence shows it was not reached.
+Table~\ref{tab:synthesis} summarizes the results against the objectives stated in Chapter~\ref{chap:context}. ``Achieved'' means that the evidence above supports the objective, ``partial'' that part of it is supported or that the evidence is incomplete, and ``not achieved'' that the evidence shows it was not reached.
 
 \begin{table}[H]
 \centering\small
@@ -361,7 +361,7 @@ Full-stack application (Spring Boot, React, MUI) & CRUD of clients, drivers and 
 REST API documented with OpenAPI & Documentation configured, but the Swagger capture failed and the OpenAPI workflow failed once. & partial \\
 Persistence in PostgreSQL & Stack ran with PostgreSQL~16; repository tests and CRUD checks pass. & achieved \\
 Automated tests with JUnit~5 & 82 tests pass, 77.1\,\% line coverage; mappers at 8.8\,\% and no real frontend test. & partial \\
-JWT authentication and input validation & 401, 400 and 404 behaviours verified (Table~\ref{tab:sec-api}). & achieved \\
+JWT authentication and input validation & 401, 400 and 404 behaviors verified (Table~\ref{tab:sec-api}). & achieved \\
 Secrets kept out of the source code & One example secret found by Gitleaks in \texttt{.env.example}. & partial \\
 Gitleaks, Semgrep, Dependency-Check, Trivy in CI & Gitleaks, Semgrep and Trivy executed with results (Table~\ref{tab:scans}); Dependency-Check not run here; critical findings remain in frontend dependencies. & partial \\
 Docker and Docker Compose packaging & Images of 353~MB and 70.1~MB, non-root users, stack healthy after 27.1~s. & achieved \\

@@ -1,116 +1,54 @@
 %========================================================================================
-%   Chapter 9 — Discussion (Enhanced)
+%   Chapter 9 --- Discussion
 %========================================================================================
 \chapter{Discussion}
+\label{chap:discussion}
 
-This chapter provides a critical analysis of the Delivery Tracker DevSecOps project from educational, technical, and architectural perspectives.  
-It highlights its pedagogical value, alignment with industry best practices, and real-world applicability, while also identifying key limitations and opportunities for improvement.
+This chapter assesses what the project taught us, what the evidence of Chapter~\ref{chap:results} does and does not show, and where the work falls short. We keep the discussion to what the repository and the collected measurements support.
 
 %------------------------------------------------
 \section{Educational Value of the Project}
 
-\textbf{Bridging the Theory–Practice Gap:}  
-The project successfully translated abstract DevSecOps principles into concrete, operational experience.  
-Concepts such as Infrastructure as Code (IaC), Continuous Integration, and Continuous Deployment—often taught in isolation—were unified through Terraform, Ansible, and GitHub Actions.  
-Students were exposed to authentic engineering scenarios: debugging remote servers, handling SSH keys, managing Terraform state, and securing automated pipelines.  
-This hands-on immersion created a learning experience that mirrors professional DevSecOps workflows.
+The one-month internship obliged us to cover the whole path from code to a running service: a REST API with token-based authentication, a single-page front end, containers, infrastructure declared in Terraform, servers configured with Ansible, and a CI/CD pipeline with several security tools. Working on all layers made the dependencies between them visible. A choice made in the application, such as reading secrets from environment variables, determined how the Ansible templates and the Docker Compose files had to be written; a firewall rule in Terraform determined how Ansible could reach a host at all (Chapter~\ref{chap:challenges}).
 
-\textbf{The Pipeline as a Quality Enforcer:}  
-The CI/CD pipeline became the project’s central nervous system and quality gatekeeper.  
-Each code change triggered a chain of automated actions—builds, tests, and security scans—ensuring that only validated, secure, and compliant code reached production.  
-This continuous feedback loop cultivated accountability and collaboration, reinforcing modern development culture where quality and security are shared responsibilities.
+We also learned how much of the effort in a pipeline goes into making its checks trustworthy rather than into adding tools. Several of the defects listed in Chapter~\ref{chap:challenges} were in the pipeline itself: gates that could not fail, policies that could not match, and triggers that never fired. Reviewing the implementation against the requirements was as instructive as writing it.
 
-\textbf{Cultivating a System-Owner Mindset:}  
-Exposure to the full stack—from Spring Boot backend to Terraform networking—helped move from a “developer-only” to a “system owner” mindset.  
-Students learned that software quality depends not only on source code, but equally on environment configuration, CI/CD automation, and post-deployment monitoring.  
-This holistic perspective fostered a deeper appreciation for lifecycle management and the interdependence of software, infrastructure, and security.
+\needsinput{Personal lessons and the organisation of the work between the two students (who handled which part, how the work was shared); this is the only place where the authors' own account is required.}
 
 %------------------------------------------------
-\section{Alignment with DevSecOps Best Practices}
+\section{Alignment with DevSecOps Practices}
 
-\textbf{Proactive Security (“Shift Left”):}  
-Security controls were integrated early in the Software Development Life Cycle (SDLC).  
-Static Application Security Testing (SAST) via Semgrep, Software Composition Analysis (SCA) via OWASP Dependency-Check, secret detection via Gitleaks, and container vulnerability scanning via Trivy ensured that potential flaws were identified before deployment.  
-This proactive “shift-left” approach minimized late-stage remediation costs and improved overall resilience.
+The practices surveyed in Chapter~\ref{chap:sota} are reflected in the project to the following extent. Security checks are placed early in the pipeline: secret scanning (Gitleaks), static analysis (Semgrep), dependency analysis (OWASP Dependency-Check for the backend, \texttt{npm audit} for the front end), container scanning (Trivy) and, for infrastructure, tfsec, Checkov and Conftest policies written in Rego. Infrastructure and server configuration are versioned with the application, and the pipeline definitions are reusable workflows. The application follows the main recommendations for REST APIs that we retained from the OWASP material: authenticated access to every business endpoint, validated input, uniform error responses, restricted CORS and hashed passwords.
 
-\textbf{Everything as Code:}  
-All system components—application, infrastructure, and security—were codified and version-controlled.  
-Terraform managed provisioning, Ansible handled configuration and hardening, and GitHub Actions defined the CI/CD logic.  
-This “Everything as Code” paradigm created a single source of truth, facilitating reproducibility, auditability, and compliance alignment with standards such as ISO 27001 and SOC 2.
-
-\textbf{Continuous Compliance and Traceability:}  
-By embedding policy-as-code principles and IaC pipelines, every infrastructure change is traceable to a Git commit.  
-This level of automation and versioning enables reproducible environments, transparent audits, and rapid recovery from misconfigurations—key hallmarks of modern secure operations.
+This is an alignment with practices, not a certification. We did not assess the project against ISO~27001 or SOC~2, and nothing in the repository allows such a claim; those frameworks concern organisational controls that a one-month, two-person project does not cover. Likewise, the project does not measure the delivery indicators discussed in Chapter~\ref{chap:sota}, since the deployment history is too short and, as discussed below, partly failing.
 
 %------------------------------------------------
-\section{A Blueprint for Production Systems}
+\section{What the Evidence Shows}
 
-\textbf{A Paved Road for Deployment:}  
-The pipeline offers a structured “paved road” for developers—ensuring that every build, test, and deployment follows the same quality and security controls.  
-This consistency reduces human error, accelerates delivery, and enables predictable, high-confidence releases.
+The results of Chapter~\ref{chap:results} give a limited but concrete picture. The backend has 82 tests that pass, with a line coverage of 77.1\,\% measured by JaCoCo; coverage is high for controllers and services and low for the mappers, which are only exercised indirectly. Semgrep reports no finding on the application sources. The security behaviour checked by hand matches the design: unauthenticated and invalid requests receive 401, and cross-origin calls are accepted only from the configured origin.
 
-\textbf{Auditability and Compliance:}  
-Codified infrastructure produces complete and verifiable audit trails.  
-Configuration history, playbook execution logs, and Terraform state versions together support traceability and compliance verification without direct system intervention—an approach aligned with enterprise-grade governance models.
+The performance measurements are indicative only. On a developer laptop, with the load generator on the same machine, the median latency of the list endpoints for clients and drivers is about 10\,ms, and a short k6 run with ten virtual users produced no failed request. These values say that the application has no obvious performance defect at this scale; they do not describe production behaviour, and we draw no capacity conclusion from them.
 
-\textbf{Reproducibility and Scalability:}  
-Using Docker and Terraform modules, the entire environment can be reproduced identically across machines or clouds.  
-This design pattern forms a reusable DevSecOps blueprint adaptable for future enterprise projects or academic labs.
+On the other side, the evidence also records problems. The scans report vulnerable dependencies (Chapter~\ref{chap:results}), the Gitleaks scan finds an example secret in the history, and the GitHub Actions history shows many failed runs. The history predates the final fixes, so it cannot be used to claim that the corrected workflows are stable.
 
 %------------------------------------------------
-\section{Limitations and Areas for Improvement}
+\section{Limitations}
 
-Despite the successful implementation of key objectives, several areas were identified for further enhancement toward production-level maturity.
+We group the limitations by area. They are the basis of the future work in Chapter~\ref{chap:conclusion}.
 
-\subsection{From Logging to Proactive Observability}
-\textbf{Limitation:}  
-Current logging is decentralized, with no real-time visualization or alerting.
+\subsection{Application}
+The system has a single administrator account defined by environment variables and one role; there is no users table, no role-based access control and no password change. The JWT is stored in the browser's \texttt{localStorage}, which exposes it to script injection, and there is no refresh token and no revocation: a token stays valid until its 30-minute expiry. The two front-end tests are placeholders, so the user interface is not tested automatically. The health endpoint exposes component details to anyone, because details are shown without authentication.
 
-\textbf{Improvement:}  
-Integrate centralized observability using the ELK Stack (Elasticsearch, Logstash, Kibana) for log aggregation and Prometheus + Grafana for metrics and alerting.  
-This would provide deep visibility into system behavior and reduce Mean Time to Resolution (MTTR).
+\subsection{Security Analysis}
+\texttt{npm audit} runs in report-only mode and finds 70 vulnerable packages, including three critical ones. They are mostly transitive dependencies of \texttt{react-scripts}, used at build time, which is why we did not make the gate blocking; this is a trade-off, not a resolution. OWASP Dependency-Check could not be run locally because of the size of the vulnerability database download, and no dynamic testing (DAST) was performed. The Trivy image scans covered operating-system packages only, as the Java library database was not downloaded.
 
-\subsection{From Single-Node Deployment to High Availability}
-\textbf{Limitation:}  
-The Docker Compose setup runs on a single VM per environment, introducing a single point of failure.
+\subsection{Pipeline and Deployment}
+The Terraform workflow never succeeded on the remote repository, and the front-end CI succeeded in only 32\,\% of the observed runs, although these runs predate the fixes of the final revision. Continuous delivery is partial: the front-end CD job is a placeholder, the back-end job deploys by connecting over SSH, and CI builds images with a staging tag only, so that a production deployment needs an explicit tag. The Ansible roles and playbooks were checked for syntax but not executed against real servers in this revision; they should be regarded as unvalidated. Vault variables and the database port of the managed cluster remain to be confirmed.
 
-\textbf{Improvement:}  
-Migrate to Kubernetes for container orchestration, load balancing, and auto-scaling.  
-Kubernetes would enable self-healing services, rolling updates, and advanced deployment strategies (Blue/Green, Canary).
-
-\subsection{From Static to Dynamic Secrets Management}
-\textbf{Limitation:}  
-Secrets are encrypted but statically stored in Ansible Vault, requiring manual rotation.
-
-\textbf{Improvement:}  
-Adopt HashiCorp Vault or AWS Secrets Manager for dynamic secret generation.  
-This approach issues time-limited credentials at runtime, reducing exposure risk and improving compliance posture.
-
-\subsection{Enhancing the Security Testing Spectrum}
-\textbf{Limitation:}  
-Security validation currently focuses on static and dependency analysis.
-
-\textbf{Improvement:}  
-Extend the pipeline to include Dynamic Application Security Testing (DAST) using tools such as OWASP ZAP.  
-This will detect runtime issues like insecure headers, misconfigured CORS, or injection vulnerabilities missed by static tools.
-
-\subsection{From Manual Reviews to Policy-as-Code}
-\textbf{Limitation:}  
-Infrastructure changes rely on human approval via Git pull requests.
-
-\textbf{Improvement:}  
-Integrate Open Policy Agent (OPA) or Conftest into the CI/CD process to automatically enforce security and compliance rules on Terraform and Ansible configurations before merge or deployment.
+\subsection{Architecture and Operations}
+Each environment uses one virtual machine per tier, so there is no high availability and no zero-downtime deployment. Observability is limited to application logs and a node exporter; there are no dashboards, no alerting and no centralised logs. Finally, the one-month duration limited the depth of every part: breadth was favoured over depth, which is visible in the number of areas that are implemented but only partly validated.
 
 %------------------------------------------------
-\section{Reflections on Educational and Professional Growth}
+\section{Concluding Remarks}
 
-The project demonstrated how DevSecOps can unify development, security, and operations in a single workflow.  
-Students gained hands-on experience in areas rarely covered together in academic curricula—cloud provisioning, configuration management, secure coding, and CI/CD automation.  
-Moreover, the experience nurtured professional skills such as team collaboration, debugging under pressure, and technical documentation—all critical for real-world DevSecOps roles.
-
-%------------------------------------------------
-\section{Concluding Discussion}
-
-In summary, this project validated that even within a limited academic timeframe, a complete and secure DevSecOps pipeline can be successfully designed and deployed.  
-The system integrates secure coding, automated testing, IaC provisioning, and containerized deployment in alignment with modern industry standards.  
-While scalability, observability, and dynamic secret management remain future work, the current implementation provides a solid, reproducible foundation and a practical reference for similar educational and professional DevSecOps initiatives.
+The project delivers a working application and a pipeline whose main security controls exist and have been exercised locally, but it does not yet demonstrate a fully automated and verified delivery to servers. We consider this an honest and useful result for a first DevSecOps project: the limits above are known, documented and ordered in the next chapter.

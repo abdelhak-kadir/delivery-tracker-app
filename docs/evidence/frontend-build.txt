@@ -1,0 +1,47 @@
+# Command: cd front && CI=true npm test -- --watchAll=false ; CI=true npm run build ; npm audit --json
+# Date: 2026-11-05 23:29:28 +0000
+# Machine: macOS 26.7.2, Intel(R) Core(TM) i5-1038NG7 CPU @ 2.00GHz, 16 GB RAM, Docker Desktop
+# Commit: f5a0bd2 (+ uncommitted local changes)
+
+node v20.19.6, npm 11.7.0
+
+## npm test
+
+> front@0.1.0 test
+> react-scripts test --watchAll=false
+
+PASS src/App.test.js
+  ✓ React testing is working (17 ms)
+  ✓ Basic math test (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total
+Snapshots:   0 total
+Time:        1.888 s
+Ran all test suites.
+
+real	0m3.431s
+user	0m1.982s
+sys	0m0.687s
+
+## npm run build
+
+> front@0.1.0 build
+> react-scripts build
+
+Creating an optimized production build...
+Browserslist: browsers data (caniuse-lite) is 15 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: browsers data (caniuse-lite) is 15 months old. Please run:
+  npx update-browserslist-db@latest
+real	0m38.356s
+
+## Bundle sizes (raw bytes / gzip bytes)
+build/static/js/453.c2ea0d57.chunk.js              raw=    4470  gzip=    1787
+build/static/js/main.f083396e.js                   raw=  676488  gzip=  203125
+build/static/css/main.e6c13ad2.css                 raw=     337  gzip=     282
+
+## npm audit (front/, production+dev as installed) -- counts by severity
+{'info': 0, 'low': 18, 'moderate': 13, 'high': 36, 'critical': 3, 'total': 70}
+dependencies: {'prod': 1379, 'dev': 0, 'optional': 4, 'peer': 2, 'peerOptional': 0, 'total': 1384}

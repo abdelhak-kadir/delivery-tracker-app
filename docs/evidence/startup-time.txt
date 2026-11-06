@@ -1,0 +1,3 @@
+up -d invoked at epoch 1793923140.9338639
+backend /actuator/health=UP after 27.1s
+frontend http://localhost:3000 HTTP 200 after 14.6s

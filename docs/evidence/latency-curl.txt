@@ -1,0 +1,16 @@
+# Command: python3 loop of curl -w '%{time_total}' x50 per endpoint (sequential)
+# Date: 2026-11-06 00:00:56 +0000
+# Machine: macOS 26.7.2, Intel(R) Core(TM) i5-1038NG7 CPU @ 2.00GHz, 16 GB RAM, Docker Desktop
+# Commit: f5a0bd2 (+ uncommitted local changes)
+
+# Local machine, Docker Desktop, sequential curl, NOT production. Indicative only.
+### GET /api/v1/clients?page=0&size=20 (authenticated)
+n=50 min=8.8ms median=10.5ms p95=14.7ms max=17.0ms mean=10.8ms
+### GET /api/v1/drivers?page=0&size=20 (authenticated)
+n=50 min=8.4ms median=10.0ms p95=13.1ms max=16.3ms mean=10.2ms
+### GET /api/v1/trans_logs?page=0&size=20 (authenticated)
+n=50 min=20.1ms median=27.0ms p95=46.0ms max=56.1ms mean=29.4ms
+### POST /api/v1/auth/login (valid credentials: BCrypt/credential check + JWT signing + HTTP)
+n=50 min=91.3ms median=93.6ms p95=172.9ms max=252.3ms mean=101.5ms
+### GET /api/v1/clients without token (401 path)
+n=50 min=3.2ms median=4.0ms p95=4.6ms max=5.1ms mean=4.0ms

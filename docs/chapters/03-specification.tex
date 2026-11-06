@@ -2,21 +2,21 @@
 %   Chapter 3 -- Requirements Analysis
 %========================================================================================
 
-\chapter{Requirements Analysis}
+\chapter{Requirements Analysis}\label{chap:requirements}
 
-This chapter states what the Delivery Tracker system has to do and under which constraints. We first describe the business problem, then identify the actors and use cases, and finally derive numbered functional and non-functional requirements. The requirements are stated against the system as it was built during the internship: every functional requirement can be traced to an endpoint or a screen of the application. The architecture, the security mechanisms and the delivery pipeline that satisfy these requirements are designed in Chapter~4.
+This chapter states what the Delivery Tracker system has to do and under which constraints. We first describe the business problem, then identify the actors and use cases, and finally derive numbered functional and non-functional requirements. The requirements are stated against the system as it was built during the internship: every functional requirement can be traced to an endpoint or a screen of the application. The architecture, the security mechanisms and the delivery pipeline that satisfy these requirements are designed in Chapter~\ref{chap:design}.
 
 %------------------------------------------------
 \section{Problem Statement and Business Context}
 
-The host company is a road-transport and trading business whose day-to-day activity revolves around trips: a driver loads goods for a client at one place, drives them to a destination, and unloads them on a given date. Each trip generates information that must be recorded precisely, because it later supports invoicing and the control of costs: the parties involved, the load and unload dates and places, the delivery note, the advance paid to the driver, the fuel consumed and its unit price, additional charges, the tariff applied to the client and the resulting trip price. Chapter~1 presents the company; here we only retain what matters for the specification.
+The host company is a road-transport and trading business whose day-to-day activity revolves around trips: a driver loads goods for a client at one place, drives them to a destination, and unloads them on a given date. Each trip generates information that must be recorded precisely, because it later supports invoicing and the control of costs: the parties involved, the load and unload dates and places, the delivery note, the advance paid to the driver, the fuel consumed and its unit price, additional charges, the tariff applied to the client and the resulting trip price. Chapter~\ref{chap:context} presents the company; here we only retain what matters for the specification.
 
 We identified three needs from this activity.
 
 \begin{itemize}
     \item \textbf{Centralised records.} Clients, drivers and trips must be stored in one shared, structured place instead of scattered documents.
     \item \textbf{Controlled access.} The records contain commercial data (client identities, tariffs, prices); only an authenticated person of the company may read or modify them.
-    \item \textbf{A reproducible, secure way to run the system.} Because the data is sensitive, the application must be built, scanned, deployed and operated through automated and repeatable procedures. This need links the application to the DevSecOps subject of the project, whose concepts are introduced in Chapter~2.
+    \item \textbf{A reproducible, secure way to run the system.} Because the data is sensitive, the application must be built, scanned, deployed and operated through automated and repeatable procedures. This need links the application to the DevSecOps subject of the project, whose concepts are introduced in Chapter~\ref{chap:sota}.
 \end{itemize}
 
 The system therefore has two aspects: a business application (a web interface and a REST API for clients, drivers and transport logs) and a delivery platform (infrastructure as code, configuration management and a CI/CD pipeline with security checks) that builds and operates it. Figure~\ref{fig:high-level-architecture} places both in their context.
@@ -81,7 +81,7 @@ UC-9 Run CI/CD and security scans & DevOps engineer & Trigger the build, test, s
 \section{Functional Requirements}
 \label{sec:fr}
 
-The functional requirements of Table~\ref{tab:fr} were derived from the controllers of the backend and from the routes of the frontend. The paths are those exposed under the \texttt{/api/v1} prefix; the complete API contract is given in Chapter~4.
+The functional requirements of Table~\ref{tab:fr} were derived from the controllers of the backend and from the routes of the frontend. The paths are those exposed under the \texttt{/api/v1} prefix; the complete API contract is given in Chapter~\ref{chap:design}.
 
 {
 \renewcommand{\arraystretch}{1.2}
@@ -120,7 +120,7 @@ FR-16 & Each change pushed to the repository shall trigger build, test and secur
 %------------------------------------------------
 \section{Non-Functional Requirements}
 
-Table~\ref{tab:nfr} states the quality requirements. The performance values are \emph{targets} fixed at specification time; they are not measurements. Whether they were met is assessed in the results chapter.
+Table~\ref{tab:nfr} states the quality requirements. The performance values are \emph{targets} fixed at specification time; they are not measurements. Whether they were met is assessed in Chapter~\ref{chap:results}.
 
 {
 \renewcommand{\arraystretch}{1.2}
@@ -155,7 +155,7 @@ NFR-12 & Observability & The application shall expose a health endpoint and the 
 %------------------------------------------------
 \section{Technology Stack}
 
-The stack was chosen for its maturity, its support for the DevSecOps practices studied in Chapter~2 and the team's prior knowledge. Table~\ref{tab:stack} gives the versions declared in the project files (\texttt{pom.xml}, \texttt{package.json}, the Dockerfiles, the Terraform and workflow files).
+The stack was chosen for its maturity, its support for the DevSecOps practices studied in Chapter~\ref{chap:sota} and the team's prior knowledge. Table~\ref{tab:stack} gives the versions declared in the project files (\texttt{pom.xml}, \texttt{package.json}, the Dockerfiles, the Terraform and workflow files).
 
 {
 \renewcommand{\arraystretch}{1.2}

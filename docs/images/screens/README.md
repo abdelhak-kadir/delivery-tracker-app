@@ -1,25 +1,32 @@
-# Expected screenshots
+# Screenshots for chapter 7
 
-Drop the real images here (PNG). `\screenshot{<file>}{caption}{label}` in chapter 7 picks them up automatically; until then a grey "Screenshot needed" box is printed.
+`\screenshot{<file>}{caption}{label}` in `chapters/07-results-evaluation.tex` picks the files up automatically; a missing file is printed as a grey "Screenshot needed" box.
+
+## Present (produced 2026-11-05/06 on the local stack, commit f5a0bd2)
+
+| File | Content | Used in ch. 7 |
+|---|---|---|
+| `login.png` | Login page | yes |
+| `dashboard.png` | Dashboard (50 generated records of each kind) | yes |
+| `clients.png`, `drivers.png`, `transport-logs.png` | Management pages | yes |
+| `transport-form.png` | Creation dialog with validation errors | yes |
+| `transport-form-open.png` | Same dialog, empty, no errors | no (available) |
+| `actuator-health.png` | `/actuator/health` in a browser | yes |
+| `jacoco-report.png` | JaCoCo HTML report | yes |
+| `docker-logs.png` | Rendered text of `docker compose ps`, image sizes, `id`, backend log (not a terminal capture) | yes |
+| `security-logs.png` | Rendered text of the backend "Invalid JWT token" log line | yes |
+| `http-401.png`, `api-response.png`, `semgrep.png`, `trivy-scan.png` | Rendered text of curl / scanner outputs (not Postman, not a terminal capture; trivy-scan shows 3 CRITICAL, not "zero critical") | no (tables say the same) |
+| `swagger-ui.png` | **Unusable**: shows "Failed to load remote configuration" | no |
+
+## Still needed from the authors
 
 | File | Should show |
 |---|---|
-| `login.png` | Login interface with JWT authentication form. |
-| `dashboard.png` | Main dashboard showing client and driver overview. |
-| `transport-form.png` | Transport log creation form with validation feedback. |
-| `swagger-ui.png` | Swagger UI displaying secured API endpoints. |
-| `docker-logs.png` | Docker container startup logs showing optimized runtime. |
-| `api-response.png` | Postman API response example with latency. |
-| `browser-devtools.png` | Frontend page-load performance in browser DevTools. |
-| `http-401.png` | Failed login attempt returning HTTP 401 Unauthorized. |
-| `security-logs.png` | Spring Security logs confirming JWT validation. |
-| `trivy-scan.png` | Trivy container scan report showing zero critical issues. |
-| `semgrep.png` | Semgrep static-analysis summary (no major findings). |
-| `ghactions-security.png` | GitHub Actions security-scan workflow logs. |
-| `ghactions-pipeline.png` | GitHub Actions pipeline summary (build–test–scan–deploy). |
-| `jacoco-report.png` | JaCoCo/Codecov coverage report of backend services. |
-| `ansible-output.png` | Ansible playbook output confirming successful deployment. |
-| `actuator-health.png` | Spring Actuator \texttt{/health} endpoint returning \texttt{UP}. |
-| `tracking-search.png` | Frontend search form for package tracking number. |
-| `tracking-result.png` | Tracking result page displaying parcel status. |
-| `admin-dashboard.png` | Admin dashboard for delivery creation and management. |
+| `swagger-ui-ok.png` | Swagger UI with the endpoint list loaded (retake; replaces the failed `swagger-ui.png`) |
+| `ghactions.png` | GitHub Actions run summary of the CI workflows |
+| `ghactions-security.png` | Logs of the security-scan workflow |
+| `github-security-tab.png` | GitHub Security tab, code-scanning alerts |
+| `ansible.png` | Output of a real Ansible playbook run against the servers |
+| `devtools.png` (optional) | Browser DevTools page-load of the dashboard |
+
+The parcel-tracking screenshots (`tracking-search.png`, `tracking-result.png`, `admin-dashboard.png`) were removed from the list: the feature does not exist in the application.

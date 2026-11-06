@@ -1,116 +1,37 @@
 %========================================================================================
-%   Chapter 10 — Conclusion & Future Work
+%   Chapter 10 --- Conclusion and Future Work
 %========================================================================================
-\chapter{Conclusion \& Future Work}
+\chapter{Conclusion and Future Work}
+\label{chap:conclusion}
 
-This final chapter consolidates the outcomes of the Delivery Tracker DevSecOps project, summarizes its major contributions, and outlines directions for future evolution.  
-The work demonstrates how automation, security, and scalability can coexist harmoniously within a modern software delivery pipeline.
+\section{Summary of the Work}
 
-%------------------------------------------------
-\section{Summary of Achievements}
+The objective of the internship was to build a delivery-tracking web application for a small transport company and to surround it with a DevSecOps pipeline. We delivered a Spring Boot 3.5.6 REST API on Java 21 with JWT authentication, a React 19 and MUI 7 front end, and a PostgreSQL 16 database, covering the management of clients, drivers and transport logs. Around the application we built Docker images and Compose files, a Terraform module for DigitalOcean, Ansible roles for server configuration, and GitHub Actions workflows that combine build, test and several security analyses.
 
-The project successfully implemented a full DevSecOps pipeline integrating Infrastructure as Code (IaC), continuous security scanning, and automated deployment.  
-It confirms that robust security practices need not compromise agility — automation, when properly designed, enhances both speed and resilience.
+The evidence collected at the end of the internship (Chapter~\ref{chap:results}) shows that the backend passes 82 tests with 77.1\,\% line coverage, that Semgrep reports no finding on the application code, that unauthenticated access is rejected with 401, and that both container images run as non-root users. The same evidence shows what is missing, and Chapter~\ref{chap:discussion} lists it: a single administrator account, report-only dependency auditing, a partial continuous delivery, Terraform and Ansible code not yet validated end to end, and no monitoring beyond a node exporter. A review of our own implementation in the last days also uncovered and corrected a number of defects (Chapter~\ref{chap:challenges}).
 
-\textbf{Key accomplishments:}
-\begin{itemize}
-    \item Deployed a multi-tier web application using secure, cloud-native principles.
-    \item Implemented continuous security scanning, remediating over 15 vulnerabilities.
-    \item Achieved reproducible and auditable IaC deployments through Terraform.
-    \item Established a CI/CD pipeline that reduced deployment time from 15 minutes to under two.
-    \item Created immutable, policy-governed infrastructure preventing configuration drift.
-    \item Quantitatively improved the system’s security posture across all lifecycle stages.
-\end{itemize}
-
-Collectively, these results validate the feasibility of embedding DevSecOps workflows within an academic or enterprise context using open-source technologies.
-
-%------------------------------------------------
 \section{Technical Contributions}
 
-From a technical standpoint, the project produced reusable, standards-compliant building blocks that can be extended to future DevSecOps initiatives:
-\begin{itemize}
-    \item Modular Terraform templates adaptable to multiple cloud providers.
-    \item GitHub Actions workflows integrating SAST, SCA, and container-security scanning.
-    \item Policy-as-Code enforcement using Open Policy Agent (OPA) for governance.
-    \item Hardened Docker multi-stage build strategies minimizing the attack surface.
-    \item Ansible playbooks automating secure deployment and configuration management.
-\end{itemize}
+The following artefacts exist in the repository and can be inspected. The Terraform module describes a bastion, a frontend and a backend server, firewalls, a managed PostgreSQL database and DNS records, with its state in a remote backend; Rego policies checked by Conftest complement tfsec and Checkov. The CI security workflows are reusable and publish SARIF reports to the GitHub Security tab. Twelve Ansible roles cover system hardening, firewall, SSH, Docker, Nginx with TLS, the application and a node exporter, and an inventory generator derives the hosts from Terraform outputs. The container images use multi-stage builds, run without root privileges, and are 353\,MB (backend) and 70.1\,MB (frontend). The test suite combines unit, repository and controller tests with H2-based integration tests.
 
-These artifacts collectively form a practical reference architecture for secure, automated software delivery pipelines.
+\section{Future Work}
 
-%------------------------------------------------
-\section{Educational Impact}
+We order the following work by priority, derived from the limitations of Chapter~\ref{chap:discussion}.
 
-Beyond its technical deliverables, the project carries strong educational value.  
-It bridges the gap between theoretical instruction and operational DevSecOps practice, offering:
-\begin{itemize}
-    \item Hands-on exposure to declarative infrastructure and automation principles.
-    \item Integration of security controls throughout the Software Development Life Cycle (SDLC).
-    \item Experience deploying containerized applications within a controlled cloud environment.
-    \item Familiarity with enterprise-grade automation tools such as Terraform, Ansible, and GitHub Actions.
-    \item Training in vulnerability detection, risk mitigation, and secure-by-design engineering.
-\end{itemize}
+\subsection{Short Term: Application Security}
+The first step is to replace the fixed account with a users table, hashed passwords and roles (for example administrator and operator), enforced with method-level authorisation. In parallel, the token handling should change: either an HttpOnly, SameSite cookie, or short-lived access tokens with refresh tokens that can be revoked. Component tests for the main pages (login, lists, transport-log form) should replace the placeholder tests, and the example secret should be removed from \texttt{.env.example} and from the future history. The public health details should be restricted.
 
-The experience strengthened competencies that are directly transferable to professional DevSecOps and cloud-security roles.
+\subsection{Short Term: Pipeline}
+\texttt{npm audit} and OWASP Dependency-Check should become blocking gates for critical findings. This requires upgrading or replacing \texttt{react-scripts}, which is no longer actively maintained; migrating the build to Vite is the most direct option. A dynamic scan with OWASP ZAP against a staging deployment should be added to the pipeline. Continuous delivery should be completed: a real front-end deployment job, promotion of an image from staging to production using an explicit tag, and an approval step for production. The Terraform workflow must first be made to succeed on the remote repository, so that plan, policy checks and drift detection can be observed running.
 
-%------------------------------------------------
-\section{Future Work and Enhancements}
+\subsection{Medium Term: Operations}
+The Ansible playbooks should be run end to end against staging servers, including the migration to the service account, and their idempotence checked by a second run. Once this is validated, observability should be extended with Prometheus and Grafana dashboards, alert rules, and centralised logs; secrets should move from vault files to a secrets manager. A second backend instance behind a load balancer and a database with a standby would address the single-machine limitation.
 
-While the current system demonstrates a robust DevSecOps foundation, several extensions can elevate it to enterprise-grade maturity.
+\subsection{Long Term}
+If the load or the number of services grew, a move to Kubernetes, with a GitOps tool for deployment and possibly a service mesh for mutual TLS, could be considered. We regard this as a long-term option only: at the present size, the operational cost would exceed the benefit, and the preceding steps are prerequisites.
 
-\subsection{Container Orchestration}
-\textbf{Kubernetes Migration:}  
-Transition from single-VM Docker Compose to Kubernetes to enable:
-\begin{itemize}
-    \item High availability and self-healing workloads.
-    \item Advanced rollout strategies (Blue-Green, Canary).
-    \item Fine-grained resource scheduling and horizontal scaling.
-    \item Built-in service-mesh and network-level security enforcement.
-\end{itemize}
+\section{Personal Conclusion}
 
-\subsection{GitOps Evolution}
-\textbf{ArgoCD Implementation:}  
-Adopting a GitOps model would reinforce the principle of “Everything as Code” by ensuring:
-\begin{itemize}
-    \item Declarative deployment lifecycle management.
-    \item Continuous synchronization between Git repositories and runtime cluster state.
-    \item Automated drift detection and reconciliation.
-    \item Streamlined multi-environment promotion workflows.
-\end{itemize}
+This internship was our first experience of delivering an application together with the infrastructure and the checks that surround it. Writing the code was the smaller part of the work; most of the time went into making the pieces cooperate and into discovering, by testing them, that some of our own controls did not do what we believed. We leave the project with a working base, a clear list of what remains unproven, and a more careful habit: to verify a security measure by trying to defeat it.
 
-\subsection{Advanced Security Integration}
-Future iterations should introduce runtime and compliance-level defenses:
-\begin{itemize}
-    \item Runtime threat detection with Falco or Aqua Security.
-    \item Zero-Trust networking enforced via Istio or Linkerd.
-    \item Automated patch and vulnerability management.
-    \item Continuous compliance validation for SOC 2, PCI-DSS, and GDPR frameworks.
-\end{itemize}
-
-\subsection{Observability and Monitoring}
-Enhanced monitoring would improve reliability and business visibility through:
-\begin{itemize}
-    \item Distributed tracing with Jaeger or Zipkin.
-    \item Machine-learning-based anomaly detection in metrics pipelines.
-    \item Business-aligned KPIs linked directly to system health metrics.
-    \item Chaos-engineering experiments to validate resilience and fault tolerance.
-\end{itemize}
-
-\subsection{Multi-Cloud and Hybrid Strategies}
-To improve resilience and portability:
-\begin{itemize}
-    \item Deploy across multiple cloud providers to mitigate vendor lock-in.
-    \item Support hybrid and edge environments for latency-sensitive workloads.
-    \item Implement automated cost-optimization and sustainability policies.
-\end{itemize}
-
-%------------------------------------------------
-\section{Final Reflections}
-
-This work confirms that \textbf{DevSecOps is not a buzzword but an actionable engineering paradigm} for delivering secure, scalable, and auditable systems.  
-Embedding security directly within CI/CD pipelines transforms it from a reactive checkpoint into a proactive, continuous enabler of software quality.
-
-Automation, policy-driven governance, and data-driven feedback loops constitute the core pillars of modern engineering excellence.  
-As organizations transition toward cloud-native ecosystems, these practices will define the next generation of secure and sustainable software delivery.  
-
-Ultimately, this project provides both an educational framework and a deployable blueprint — bridging academic learning with real-world DevSecOps maturity and setting the stage for ongoing research, innovation, and professional application.
+\needsinput{Optional personal acknowledgement or professional lesson that only the authors can write (for example what each student would do differently).}

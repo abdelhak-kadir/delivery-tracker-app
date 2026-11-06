@@ -2,7 +2,7 @@
 %   Chapter 1 – Host organization and project context
 %========================================================================================
 
-\chapter{Host Organization and Project Context}
+\chapter{Host Organization and Project Context}\label{chap:context}
 
 This chapter presents the company that hosted the internship, the problem that motivated the project, its objectives and scope, and the way the work was planned and organised.
 
@@ -94,7 +94,7 @@ Observability & Basic host metrics (node exporter) & Dashboards and alerting \\
 %------------------------------------------------
 \section{Technical Architecture Overview}
 
-The system follows a three-tier architecture. The frontend is a React single-page application that calls the backend through Axios. The backend is a Spring Boot REST API secured with Spring Security and JWT. The data is stored in a PostgreSQL database. The infrastructure is described with Terraform and configured with Ansible, and GitHub Actions workflows build, scan and deploy the components. This architecture is detailed in Chapter~4.
+The system follows a three-tier architecture. The frontend is a React single-page application that calls the backend through Axios. The backend is a Spring Boot REST API secured with Spring Security and JWT. The data is stored in a PostgreSQL database. The infrastructure is described with Terraform and configured with Ansible, and GitHub Actions workflows build, scan and deploy the components. This architecture is detailed in Chapter~\ref{chap:design}.
 
 \input{figures/fig1-3}
 
@@ -141,11 +141,11 @@ The project was carried out by Ait Kadir Abdelhak and Oubella Ismail under the a
 \section{Report Structure}
 
 The remainder of this document is organised as follows.
-Chapter~2 reviews the state of the art on DevSecOps, its practices and its tools.
-Chapter~3 analyses the requirements of the application and of the delivery pipeline.
-Chapter~4 presents the design: architecture, data model, security mechanisms and infrastructure.
-Chapter~5 describes the implementation of the backend, the frontend, the containers, the infrastructure and the pipelines.
-Chapter~6 presents and evaluates the results.
+Chapter~\ref{chap:sota} reviews the state of the art on DevSecOps, its practices and its tools.
+Chapter~\ref{chap:requirements} analyses the requirements of the application and of the delivery pipeline.
+Chapter~\ref{chap:design} presents the design: architecture, data model, security mechanisms and infrastructure.
+Chapter~\ref{chap:implementation} describes the implementation of the backend, the frontend, the containers, the infrastructure and the pipelines.
+Chapter~\ref{chap:results} presents and evaluates the results.
 Chapter~7 reports the challenges encountered and the solutions adopted.
 Chapter~8 discusses the limits of the work.
 Chapter~9 concludes and proposes future work.

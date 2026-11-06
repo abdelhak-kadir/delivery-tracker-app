@@ -197,3 +197,14 @@ dedication, acknowledgements, abstract, résumé (front matter). Check page rang
 
 ### Layout to polish (WP10)
 Class diagram (fig4-2) TransportLog lines touch the box edge; Implementation chapter is ~25 pages (could drop some listings).
+
+## 8. Status after Wave 3 (2026-11-06)
+
+Done: real evidence in `docs/evidence/` (SUMMARY.md = single source of numbers), 16 screenshots in
+`docs/images/screens/`, Results chapter (ch.6) rebuilt from evidence, chapters 7–9 rewritten without invented
+claims, all chapters labelled (`chap:context … chap:conclusion`) and cross-referenced. Report: 0 errors, 120 pages.
+
+Still needed from the authors: GitHub Actions + Security-tab screenshots, Ansible run output, Swagger UI retake
+(`swagger-ui-ok.png`; current capture shows "Failed to load remote configuration"), and the 25 `\needsinput` boxes.
+Next: WP10 final review (consistency, spelling, bib page numbers, layout polish: latency-chart labels overlap slightly,
+class-diagram text touches box edge).

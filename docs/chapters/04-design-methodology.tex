@@ -2,9 +2,9 @@
 %   Chapter 4 -- Design
 %========================================================================================
 
-\chapter{System Design}
+\chapter{System Design}\label{chap:design}
 
-This chapter describes how the requirements of Chapter~3 are met. We present the architecture of the application, its data model, the REST API, the behaviour of the two key scenarios, the security design, the design of the infrastructure and of the configuration management, and finally the design of the delivery pipeline and of the test strategy. The chapter explains \emph{what was decided and why}; the code, the commands and the observed results are given in the implementation and results chapters.
+This chapter describes how the requirements of Chapter~\ref{chap:requirements} are met. We present the architecture of the application, its data model, the REST API, the behaviour of the two key scenarios, the security design, the design of the infrastructure and of the configuration management, and finally the design of the delivery pipeline and of the test strategy. The chapter explains \emph{what was decided and why}; the code, the commands and the observed results are given in the implementation and results chapters.
 
 %------------------------------------------------
 \section{Design Principles}
@@ -309,7 +309,7 @@ Two additional layers verify the Terraform code before it is applied. Static ana
 \end{tabularx}
 \end{table}
 
-The first version of these rules identified resources by their Terraform address, by a name prefix and by the content of the cloud-init script, and several of them could therefore never match the real plan (resources live inside a module, droplets are named \texttt{<env>-bastion}, and fail2ban is installed by Ansible rather than by cloud-init). The rules were rewritten in the \texttt{rego.v1} dialect to select resources by type and planned name, and the fail2ban rule was removed. They were verified locally with Conftest on two synthetic plans: a compliant plan passed all seven checks and a non-compliant plan produced seven failures, one per check. The policies have not been evaluated against a plan produced by the real provider in the pipeline; the results chapter reports only what was actually run.
+The first version of these rules identified resources by their Terraform address, by a name prefix and by the content of the cloud-init script, and several of them could therefore never match the real plan (resources live inside a module, droplets are named \texttt{<env>-bastion}, and fail2ban is installed by Ansible rather than by cloud-init). The rules were rewritten in the \texttt{rego.v1} dialect to select resources by type and planned name, and the fail2ban rule was removed. They were verified locally with Conftest on two synthetic plans: a compliant plan passed all seven checks and a non-compliant plan produced seven failures, one per check. The policies have not been evaluated against a plan produced by the real provider in the pipeline; Chapter~\ref{chap:results} reports only what was actually run.
 
 %------------------------------------------------
 \section{Configuration Management Design (Ansible)}
@@ -427,6 +427,6 @@ Policy & Conftest, OPA & Terraform plan JSON & Fails on a denied rule \\
 %------------------------------------------------
 \section{Test Strategy}
 
-The backend is tested at four levels: unit tests of the service layer with mocked repositories, controller tests of the HTTP contract with a test security configuration, repository tests against an in-memory H2 database, and integration tests that load the application context. JaCoCo produces a coverage report, which the workflow uploads to Codecov. The frontend relies on the Jest runner provided by Create React App. The Driver module served as the reference for each level and was reproduced for the Client and TransportLog modules, and the authentication controller and the security behaviour are covered by dedicated tests. The suite contains 82 backend tests, all passing, with a line coverage of 77.1\,\% measured with JaCoCo (see the results chapter). The test of security behaviour loads the real filter chain and verifies that unauthenticated, malformed and expired tokens are answered with \texttt{401} and that a valid login gives access. The frontend tests remain limited to smoke tests.
+The backend is tested at four levels: unit tests of the service layer with mocked repositories, controller tests of the HTTP contract with a test security configuration, repository tests against an in-memory H2 database, and integration tests that load the application context. JaCoCo produces a coverage report, which the workflow uploads to Codecov. The frontend relies on the Jest runner provided by Create React App. The Driver module served as the reference for each level and was reproduced for the Client and TransportLog modules, and the authentication controller and the security behaviour are covered by dedicated tests. The suite contains 82 backend tests, all passing, with a line coverage of 77.1\,\% measured with JaCoCo (see Chapter~\ref{chap:results}). The test of security behaviour loads the real filter chain and verifies that unauthenticated, malformed and expired tokens are answered with \texttt{401} and that a valid login gives access. The frontend tests remain limited to smoke tests.
 
-Security testing is covered by the pipeline checks of Table~\ref{tab:gates} and by the security integration tests described above; no dynamic application security testing (DAST) was performed. The measurements are presented in the results chapter.
+Security testing is covered by the pipeline checks of Table~\ref{tab:gates} and by the security integration tests described above; no dynamic application security testing (DAST) was performed. The measurements are presented in Chapter~\ref{chap:results}.

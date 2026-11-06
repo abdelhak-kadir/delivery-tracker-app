@@ -42,5 +42,10 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "overrides": {
+    "proxy-addr": "^2.0.8",
+    "shell-quote": "^1.8.4",
+    "websocket-driver": "^0.7.5"
   }
 }

@@ -1,0 +1,11 @@
+# Trivy accepted-risk exceptions. Every entry needs a reason and an expiry date
+# (exp:YYYY-MM-DD); after that date Trivy reports the finding again.
+
+# spring-webmvc 6.2.19: these two are fixed only in Spring Framework 7.0.9, which
+# needs a Spring Boot 4 migration. Neither is reachable in this application:
+# - CVE-2026-47884: RCE via XsltView. The backend renders no XSLT views (JSON REST only).
+# - CVE-2026-47890: SSE stream corruption with view fragments. The backend has no
+#   Server-Sent Events endpoints.
+# Remove these lines after upgrading to Spring Boot 4.
+CVE-2026-47884 exp:2027-02-06
+CVE-2026-47890 exp:2027-02-06

@@ -26,6 +26,7 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+          cache: maven
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -70,7 +71,8 @@ jobs:
 
       - name: Upload SARIF report
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        # Skip (instead of failing again) when the scan step did not produce the file.
+        if: always() && hashFiles('reports/dependency-check-report.sarif') != ''
         with:
           sarif_file: reports/dependency-check-report.sarif
 
@@ -87,13 +89,20 @@ jobs:
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
           sudo mv ./bin/trivy /usr/local/bin/
 
+      # Trivy resolves pom.xml dependencies from ~/.m2 first and only falls back to
+      # Maven Central, which rate-limits CI runners (HTTP 429). Fill ~/.m2 up front.
+      - name: Resolve Maven dependencies for Trivy
+        working-directory: back
+        run: ./mvnw -B -q dependency:go-offline
+
       # Filesystem scan
       - name: Trivy FS Scan (SARIF report)
         run: trivy fs --exit-code 0 --severity HIGH,CRITICAL --format sarif -o trivy-fs.sarif .
 
       - name: Upload FS SARIF
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        # Skip (instead of failing again) when the scan step did not produce the file.
+        if: always() && hashFiles('trivy-fs.sarif') != ''
         with:
           sarif_file: trivy-fs.sarif
           category: trivy-fs
@@ -119,7 +128,8 @@ jobs:
 
       - name: Upload Docker Image SARIF
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        # Skip (instead of failing again) when the scan step did not produce the file.
+        if: always() && hashFiles('trivy-image.sarif') != ''
         with:
           sarif_file: trivy-image.sarif
           category: trivy-image

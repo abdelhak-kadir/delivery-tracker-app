@@ -1,24 +1,24 @@
 \begin{figure}[H]
 \centering
 \begin{adjustbox}{max width=\linewidth}
-\begin{tikzpicture}[>=latex, thick,
-  part/.style={rectangle, draw=Eblue, fill=Ecyan!15, minimum width=2.3cm, minimum height=0.9cm, font=\scriptsize\bfseries, align=center, text width=2.2cm},
+\begin{tikzpicture}[>=latex, thick, x=1.04cm,
+  part/.style={rectangle, draw=Eblue, fill=Ecyan!15, minimum width=2.8cm, minimum height=1.0cm, font=\scriptsize\bfseries, align=center, text width=2.7cm},
   life/.style={dashed, Egray},
   m/.style={-{Latex}, Eblue},
   r/.style={-{Latex}, dashed, Egray},
   t/.style={font=\scriptsize, above, align=center, inner sep=1.5pt, fill=white},
   note/.style={rectangle, draw=Eorange, fill=Eorange!10, font=\scriptsize, align=left, inner sep=3pt}]
 \def\selfmsg#1#2#3{\draw[m] (#1,#2) -- ++(0.8,0) -- ++(0,-0.5) -- ++(-0.8,0);
-  \node[anchor=west, font=\scriptsize, align=left] at ($(#1,#2)+(0.9,-0.25)$) {#3};}
+  \node[anchor=west, font=\scriptsize, align=left, fill=white, inner sep=1pt] at ($(#1,#2)+(0.9,-0.25)$) {#3};}
 
 \node[part] (spa) at (0,0) {React SPA\\(Axios)};
-\node[part] (flt) at (3.0,0) {JwtAuth-\\enticationFilter};
-\node[part] (ctl) at (6.0,0) {TransportLog-\\Controller};
-\node[part] (svc) at (9.0,0) {TransportLog-\\ServiceImpl};
+\node[part] (flt) at (3.0,0) {JwtAuthentication\\Filter};
+\node[part] (ctl) at (6.0,0) {TransportLog\\Controller};
+\node[part] (svc) at (9.0,0) {TransportLog\\ServiceImpl};
 \node[part] (rep) at (12.0,0) {ClientRepo /\\DriverRepo};
-\node[part] (map) at (15.0,0) {TransportLog-\\Mapper};
-\node[part] (trp) at (18.0,0) {TransportLog-\\Repo (JPA)};
-\foreach \x in {0,3,6,9,12,15,18}{\draw[life] (\x,-0.45) -- (\x,-17.4);}
+\node[part] (map) at (15.0,0) {TransportLog\\Mapper};
+\node[part] (trp) at (18.0,0) {TransportLog\\Repo (JPA)};
+\foreach \x in {0,3,6,9,12,15,18}{\draw[life] (\x,-0.45) -- (\x,-17.5);}
 
 \draw[m] (0,-1.5) -- node[t]{POST /api/v1/trans\_logs\\Bearer <jwt>, JSON body} (3,-1.5);
 \selfmsg{3}{-2.0}{validate JWT, set\\SecurityContext}

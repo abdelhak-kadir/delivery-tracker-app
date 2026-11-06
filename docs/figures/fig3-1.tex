@@ -9,19 +9,19 @@
 
 % Row 1: business flow
 \node[actor] (op) at (0,0) {Administrator /\\operator};
-\node[sys] (fe) at (4.4,0) {React single-page\\application};
-\node[sys] (be) at (8.8,0) {Spring Boot\\REST API};
-\node[sys, fill=Eorange!15, draw=Eorange] (db) at (13.2,0) {PostgreSQL\\database};
+\node[sys] (fe) at (5.2,0) {React single-page\\application};
+\node[sys] (be) at (10.4,0) {Spring Boot\\REST API};
+\node[sys, fill=Eorange!15, draw=Eorange] (db) at (15.6,0) {PostgreSQL\\database};
 \node[draw=Eblue, dashed, rounded corners=10pt, fit=(fe)(be)(db), inner sep=0.45cm, label={[Eblue,font=\small\bfseries]above:Delivery Tracker application}] (app) {};
 \draw[->, Eblue] (op) -- node[lbl, above]{HTTPS} (fe);
 \draw[->, Eblue] (fe) -- node[lbl, above]{REST, JWT} (be);
 \draw[->, Eblue] (be) -- node[lbl, above]{SQL (JPA)} (db);
 
 % Row 2: delivery platform
-\node[actor] (dev) at (0,-4.2) {DevOps\\engineer};
-\node[ext] (gh) at (4.4,-4.2) {GitHub Actions\\(CI, scans)};
-\node[ext] (reg) at (8.8,-4.2) {Container registry\\(GHCR)};
-\node[ext] (do) at (13.2,-4.2) {Terraform Cloud\\+ DigitalOcean};
+\node[actor] (dev) at (0,-4.0) {DevOps\\engineer};
+\node[ext] (gh) at (5.2,-4.0) {GitHub Actions\\(CI, scans)};
+\node[ext] (reg) at (10.4,-4.0) {Container registry\\(GHCR)};
+\node[ext] (do) at (15.6,-4.0) {Terraform Cloud\\+ DigitalOcean};
 \draw[->, Egray] (dev) -- node[lbl, above]{git push} (gh);
 \draw[->, Egray] (gh) -- node[lbl, above]{build, scan,\\push image} (reg);
 \draw[->, Egray, dashed] (reg) -- node[lbl, above]{image\\deployed} (do);

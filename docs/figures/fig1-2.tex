@@ -4,7 +4,7 @@
 \begin{tikzpicture}[
     node distance=0.8cm,
     every node/.style={font=\sffamily},
-    box/.style={rectangle,rounded corners,draw=Eblue!80,fill=Ecyan!10,minimum width=6cm,minimum height=1cm,align=center},
+    box/.style={rectangle,rounded corners,draw=Eblue!80,fill=Ecyan!10,minimum width=6.6cm,minimum height=1cm,align=center},
     arrow/.style={->,>=Stealth,thick,Eblue}
 ]
 
@@ -15,12 +15,12 @@
 \node[box,below=of manual3] (manual4) {Manual checks};
 
 % Right side (Delivery Tracker)
-\node[box,right=5cm of manual1] (auto1) {Web interface (React)};
+\node[box,right=4.4cm of manual1] (auto1) {Web interface (React)};
 \node[box,below=of auto1] (auto2) {REST API with validation};
 \node[box,below=of auto2] (auto3) {PostgreSQL database};
 \node[box,below=of auto3] (auto4) {Authentication and CI security scans};
 
-\node[align=center,Eblue,font=\bfseries] at ($(manual3)!0.5!(auto3)$) {Delivery Tracker};
+\node[align=center,Eblue,font=\sffamily\bfseries,above=0.35cm] at ($(manual1)!0.5!(auto1)$) {Delivery Tracker};
 
 \foreach \i/\j in {manual1/auto1,manual2/auto2,manual3/auto3,manual4/auto4}
     \draw[arrow] (\i.east) -- (\j.west);

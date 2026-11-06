@@ -7,24 +7,24 @@
   lbl/.style={font=\scriptsize, text=Egray, align=center, fill=white, inner sep=1pt}]
 
 % shared VPC
-\node[rectangle, draw=Egray, dashed, rounded corners=10pt, minimum width=16cm, minimum height=10.0cm, anchor=north west] (vpc) at (-0.7,5.6) {};
+\node[rectangle, draw=Egray, dashed, rounded corners=10pt, minimum width=16.4cm, minimum height=10.0cm, anchor=north west] (vpc) at (-0.9,5.6) {};
 \node[font=\small\bfseries, anchor=south west] at ([xshift=0.3cm,yshift=0.15cm]vpc.south west) {Shared VPC \texttt{devsecops-vpc} (fra1)};
-\node[rectangle, draw=Egray, fill=Egray!10, minimum width=15cm, minimum height=0.8cm, font=\small] (net) at (7.3,6.9) {Internet / DNS zone \texttt{3assasa.software}};
+\node[rectangle, draw=Egray, fill=Egray!10, minimum width=15.4cm, minimum height=0.8cm, font=\small] (net) at (7.3,6.9) {Internet / DNS zone \texttt{3assasa.software}};
 
-\foreach \x/\n/\p in {0/staging/s, 8.4/production/p}{
+\foreach \x/\n/\p in {0/staging/s, 8.6/production/p}{
   \begin{scope}[xshift=\x cm]
-  \node[envbox, minimum width=6.6cm, minimum height=7.0cm, anchor=north west] (\p env) at (-0.2,3.8) {};
-  \node[Eblue, font=\small\bfseries, anchor=north west] at ([xshift=0.2cm,yshift=-0.1cm]\p env.north west) {module.\n};
-  \node[comp] (\p bast) at (1.2,2.2) {Bastion droplet\\\n-bastion\\fw: bastion\_fw};
-  \node[comp] (\p fe) at (4.8,2.2) {Frontend droplet\\\n-frontend\\fw: frontend\_fw};
-  \node[comp] (\p be) at (3.0,-0.3) {Backend droplet\\\n-backend\\fw: backend\_fw};
-  \node[comp, fill=Eorange!15, draw=Eorange] (\p db) at (3.0,-2.6) {Managed PostgreSQL 16\\\n-db, DB firewall};
+  \node[envbox, minimum width=7.2cm, minimum height=7.0cm, anchor=north west] (\p env) at (-0.5,3.8) {};
+  \node[Eblue, font=\small\bfseries, anchor=north] at ([yshift=-0.15cm]\p env.north) {module.\n};
+  \node[comp] (\p bast) at (1.0,2.2) {Bastion droplet\\\n-bastion\\fw: bastion\_fw};
+  \node[comp] (\p fe) at (5.3,2.2) {Frontend droplet\\\n-frontend\\fw: frontend\_fw};
+  \node[comp] (\p be) at (3.15,-0.3) {Backend droplet\\\n-backend\\fw: backend\_fw};
+  \node[comp, fill=Eorange!15, draw=Eorange] (\p db) at (3.15,-2.6) {Managed PostgreSQL 16\\\n-db, DB firewall};
   \draw[->, Egray] (\p bast) -- node[lbl]{SSH} (\p fe);
   \draw[->, Egray] (\p bast) -- node[lbl, pos=0.45]{SSH} (\p be);
   \draw[->, Eblue] (\p fe) -- node[lbl, pos=0.45, right]{app port} (\p be);
   \draw[->, Eblue] (\p be) -- node[lbl, right]{backend only} (\p db);
-  \draw[->, Egray] (\p bast.north |- net.south) -- node[lbl]{22, admin CIDRs} (\p bast.north);
-  \draw[->, Eblue] (\p fe.north |- net.south) -- node[lbl]{80 / 443} (\p fe.north);
+  \draw[->, Egray] (\p bast.north |- 0,6.5) -- node[lbl]{22, admin CIDRs} (\p bast.north);
+  \draw[->, Eblue] (\p fe.north |- 0,6.5) -- node[lbl]{80 / 443} (\p fe.north);
   \end{scope}
 }
 \end{tikzpicture}

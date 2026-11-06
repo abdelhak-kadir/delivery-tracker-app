@@ -3,16 +3,16 @@
 \begin{adjustbox}{max width=\linewidth}
 \begin{tikzpicture}[
     stage/.style={rectangle,rounded corners,draw=Eblue,fill=Ecyan!10,
-                  minimum width=2.6cm,minimum height=1cm,align=center,font=\sffamily\small},
-    tool/.style={rectangle,draw=Eblue!70,fill=white,minimum width=2.6cm,
+                  minimum width=2.9cm,minimum height=1cm,align=center,font=\sffamily\small},
+    tool/.style={rectangle,draw=Eblue!70,fill=white,minimum width=2.9cm,
                  align=center,font=\sffamily\scriptsize,inner sep=3pt},
     arrow/.style={->,>=Stealth,thick,Eblue}
 ]
 \node[stage] (commit) {Commit /\\Pull request};
-\node[stage,right=1.0cm of commit] (build) {Build \&\\unit tests};
-\node[stage,right=1.0cm of build] (image) {Container\\image};
-\node[stage,right=1.0cm of image] (plan) {Terraform\\plan};
-\node[stage,right=1.0cm of plan] (deploy) {Deploy\\(Ansible / SSH)};
+\node[stage,right=0.8cm of commit] (build) {Build \&\\unit tests};
+\node[stage,right=0.8cm of build] (image) {Container\\image};
+\node[stage,right=0.8cm of image] (plan) {Terraform\\plan};
+\node[stage,right=0.8cm of plan] (deploy) {Deploy\\(Ansible / SSH)};
 \draw[arrow] (commit) -- (build);
 \draw[arrow] (build) -- (image);
 \draw[arrow] (image) -- (plan);

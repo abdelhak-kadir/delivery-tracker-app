@@ -3,25 +3,25 @@
 \begin{adjustbox}{max width=\linewidth}
 \begin{tikzpicture}[
     >=Latex, thick,
-    node distance=2.5cm,
+    node distance=0.9cm,
     every node/.style={font=\sffamily},
     phase/.style={
         rectangle, rounded corners=8pt,
         draw=Eblue!80, fill=Ecyan!10,
-        minimum width=2.9cm, minimum height=1cm,
+        minimum width=3.6cm, minimum height=1.3cm,
         align=center, font=\small\bfseries
     },
     arrowstyle/.style={->, Eblue, thick}
 ]
 
-% Nodes
-\node[phase] (code) {Code\\\footnotesize{Spring Boot / React}};
-\node[phase, right=of code] (build) {Build\\\footnotesize{Maven / npm}};
-\node[phase, right=of build] (scan) {Security Scans\\\footnotesize{Gitleaks, Semgrep, Trivy}};
-\node[phase, right=of scan] (tf) {Infrastructure\\\footnotesize{Terraform}};
-\node[phase, right=of tf] (ansible) {Configuration\\\footnotesize{Ansible Roles}};
-\node[phase, right=of ansible] (deploy) {Deploy\\\footnotesize{Docker Compose}};
-\node[phase, right=of deploy] (feedback) {Feedback\\\footnotesize{CI reports}};
+% Nodes (two rows: left to right, then right to left)
+\node[phase] (code) {Code\\{\footnotesize\mdseries Spring Boot / React}};
+\node[phase, right=of code] (build) {Build\\{\footnotesize\mdseries Maven / npm}};
+\node[phase, right=of build] (scan) {Security Scans\\{\footnotesize\mdseries Gitleaks, Semgrep, Trivy}};
+\node[phase, right=of scan] (tf) {Infrastructure\\{\footnotesize\mdseries Terraform}};
+\node[phase, below=1.6cm of tf] (ansible) {Configuration\\{\footnotesize\mdseries Ansible Roles}};
+\node[phase, below=1.6cm of scan] (deploy) {Deploy\\{\footnotesize\mdseries Docker Compose}};
+\node[phase, below=1.6cm of code] (feedback) {Feedback\\{\footnotesize\mdseries CI reports}};
 
 % Arrows
 \draw[arrowstyle] (code) -- (build);
@@ -30,7 +30,7 @@
 \draw[arrowstyle] (tf) -- (ansible);
 \draw[arrowstyle] (ansible) -- (deploy);
 \draw[arrowstyle] (deploy) -- (feedback);
-\draw[arrowstyle, dashed, bend left=35] (feedback.north) to node[above,font=\scriptsize]{Continuous Improvement} (code.north);
+\draw[arrowstyle, dashed] (feedback.north) -- node[right,font=\footnotesize]{Continuous improvement} (code.south);
 
 \end{tikzpicture}
 \end{adjustbox}

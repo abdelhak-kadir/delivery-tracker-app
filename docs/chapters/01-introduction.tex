@@ -131,11 +131,30 @@ The internship lasted one month and was carried out by a team of two students. S
 \label{fig:gantt}
 \end{figure}
 
-\needsinput{Confirm the split of the work into phases and weeks shown in Figure~\ref{fig:gantt}, the exact start and end dates of the internship, and the working method actually followed (Scrum, Kanban, weekly meetings with the supervisor?). The Gantt chart is an inference from the commit topics, not a record.}
+We worked iteratively, in short cycles that each produced something that could be built and tested. Each author developed on a dedicated feature branch (\texttt{features/back} for the backend and its infrastructure, \texttt{features/front} for the frontend), and the branches were merged into \texttt{main} through pull requests, which let the other author read the changes before they were integrated. The week-based phases of Figure~\ref{fig:gantt} therefore overlap rather than follow one another: the analysis and the project setup come first, the backend and the frontend then progress in parallel, and the pipelines, the infrastructure code and the report grow alongside them. We did not follow a formal framework such as Scrum; the cycles were driven by the features and by the security findings of the pipeline itself.
 
 \subsection*{Team roles}
 The project was carried out by Ait Kadir Abdelhak and Oubella Ismail under the academic supervision of Mrs.\ Latifa Makhlouf.
-\needsinput{State who did what. For example, which author developed the backend, the frontend, the CI pipelines, the Terraform and Ansible code, and who wrote which chapters. The repository shows commits from both authors on the backend, frontend and workflow branches, but the exact split is only known to the authors.}
+The areas of the repository changed by each author, as recorded in the Git history, are summarized in Table~\ref{tab:authors-areas}. The report itself was written jointly by both authors.
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.4cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Area} & \textbf{Oubella Ismail} & \textbf{Ait Kadir Abdelhak} \\
+\midrule
+Application & Backend (Spring Boot, security, tests) & Frontend (React, MUI) \\
+Containers & Docker Compose files & Frontend Dockerfile and nginx configuration, production Compose file \\
+Infrastructure & Terraform, Ansible & --- \\
+Pipelines & Backend CI, security scans, Terraform workflows (most workflows) & Frontend CI and CD workflows \\
+Report & \multicolumn{2}{c}{Written jointly} \\
+\bottomrule
+\end{tabularx}
+\caption{Areas of the repository changed by each author (from the Git history)}
+\label{tab:authors-areas}
+\end{table}
 
 %------------------------------------------------
 \section{Report Structure}

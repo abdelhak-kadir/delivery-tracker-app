@@ -5,44 +5,47 @@
 
 % --- Styles ---
 \tikzstyle{envbox}=[rectangle, draw=Eblue, fill=Ecyan!8, rounded corners=10pt, minimum width=6.4cm, minimum height=7.4cm]
-\tikzstyle{comp}=[rectangle, draw=Eblue, fill=white, rounded corners=5pt, minimum width=5.2cm, minimum height=0.9cm, font=\small\bfseries, align=center]
-\tikzstyle{db}=[rectangle, draw=Eorange, fill=Eorange!15, rounded corners=5pt, minimum width=5.2cm, minimum height=0.9cm, font=\small\bfseries, align=center]
+\tikzstyle{comp}=[rectangle, draw=Eblue, fill=white, rounded corners=5pt, minimum width=5.2cm, minimum height=0.9cm, font=\small, align=center]
+\tikzstyle{db}=[rectangle, draw=Eorange, fill=Eorange!15, rounded corners=5pt, minimum width=5.2cm, minimum height=0.9cm, font=\small, align=center]
 \tikzstyle{arrow}=[->, Eblue, thick]
 \tikzstyle{lbl}=[font=\scriptsize, fill=white, inner sep=1pt]
 
 % --- Outside actors ---
-\node[comp, minimum width=3.2cm] (admin) at (-3.8,5.6) {Administrator};
-\node[comp, minimum width=3.2cm] (users) at (3.8,5.6) {Web users};
+\node[comp, minimum width=3.2cm] (admin) at (-3.8,5.6) {\textbf{Administrator}};
+\node[comp, minimum width=3.2cm] (users) at (6.7,5.6) {\textbf{Web users}};
 
 % --- Shared VPC ---
-\node[draw=Eblue, dashed, rounded corners=14pt, minimum width=14.2cm, minimum height=8.6cm] (vpc) at (0,0) {};
-\node[font=\small\bfseries, text=Eblue, anchor=south west] at (vpc.north west) {Shared VPC (\texttt{devsecops-vpc})};
+\node[draw=Eblue, dashed, rounded corners=14pt, minimum width=15.2cm, minimum height=8.6cm] (vpc) at (0,0) {};
+\node[font=\small\bfseries, text=Eblue, anchor=north west] at (vpc.south west) {Shared VPC (\texttt{devsecops-vpc})};
 
 % --- Staging ---
 \node[envbox] (stg) at (-3.8,-0.1) {};
-\node[font=\small\bfseries, text=Eblue] at (-3.8,3.35) {Staging};
-\node[comp] (sb) at (-3.8,2.4) {Bastion droplet};
-\node[comp] (sf) at (-3.8,0.9) {Frontend droplet\\[-1pt]\scriptsize nginx + React container};
-\node[comp] (sk) at (-3.8,-0.6) {Backend droplet\\[-1pt]\scriptsize Spring Boot container};
-\node[db]   (sd) at (-3.8,-2.4) {Managed PostgreSQL\\[-1pt]\scriptsize database firewall};
+\node[font=\small\bfseries, text=Eblue, anchor=north west] at ([xshift=0.25cm,yshift=-0.12cm]stg.north west) {Staging};
+\node[comp] (sb) at (-3.8,2.4) {\textbf{Bastion droplet}};
+\node[comp] (sf) at (-3.8,0.9) {\textbf{Frontend droplet}\\[-1pt]\scriptsize nginx + React container};
+\node[comp] (sk) at (-3.8,-0.6) {\textbf{Backend droplet}\\[-1pt]\scriptsize Spring Boot container};
+\node[db]   (sd) at (-3.8,-2.4) {\textbf{Managed PostgreSQL}\\[-1pt]\scriptsize database firewall};
 
 % --- Production ---
 \node[envbox] (prd) at (3.8,-0.1) {};
-\node[font=\small\bfseries, text=Eblue] at (3.8,3.35) {Production};
-\node[comp] (pb) at (3.8,2.4) {Bastion droplet};
-\node[comp] (pf) at (3.8,0.9) {Frontend droplet\\[-1pt]\scriptsize nginx + React container};
-\node[comp] (pk) at (3.8,-0.6) {Backend droplet\\[-1pt]\scriptsize Spring Boot container};
-\node[db]   (pd) at (3.8,-2.4) {Managed PostgreSQL\\[-1pt]\scriptsize database firewall};
+\node[font=\small\bfseries, text=Eblue, anchor=north west] at ([xshift=0.25cm,yshift=-0.12cm]prd.north west) {Production};
+\node[comp] (pb) at (3.8,2.4) {\textbf{Bastion droplet}};
+\node[comp] (pf) at (3.8,0.9) {\textbf{Frontend droplet}\\[-1pt]\scriptsize nginx + React container};
+\node[comp] (pk) at (3.8,-0.6) {\textbf{Backend droplet}\\[-1pt]\scriptsize Spring Boot container};
+\node[db]   (pd) at (3.8,-2.4) {\textbf{Managed PostgreSQL}\\[-1pt]\scriptsize database firewall};
 
 % --- Flows (staging and production are identical) ---
-\draw[arrow] (admin) -- node[lbl,pos=0.55]{SSH 22, admin CIDRs only} (sb.north);
-\draw[arrow] (users) -- node[lbl,pos=0.55]{HTTP/HTTPS 80/443} (pf.north east);
+\draw[arrow] (admin) -- node[lbl,pos=0.15]{SSH 22, admin CIDRs only} (sb.north);
+\draw[arrow] (users) -- (6.7,0.9) -- (pf.east);
+\node[lbl, anchor=west] at (6.85,4.7) {HTTP/HTTPS 80/443};
 \draw[arrow] (sf) -- node[lbl,right]{TCP 8080} (sk);
 \draw[arrow] (sk) -- node[lbl,right]{PostgreSQL} (sd);
 \draw[arrow] (pf) -- node[lbl,right]{TCP 8080} (pk);
 \draw[arrow] (pk) -- node[lbl,right]{PostgreSQL} (pd);
-\draw[arrow, dashed] (sb.west) -- ++(-0.5,0) |- node[lbl,pos=0.25,left]{SSH 22} (sk.west);
-\draw[arrow, dashed] (pb.east) -- ++(0.5,0) |- node[lbl,pos=0.25,right]{SSH 22} (pk.east);
+\draw[arrow, dashed] (sb.west) -- ++(-0.3,0) |- (sk.west);
+\node[lbl, rotate=90] at ([xshift=-0.3cm,yshift=0.9cm]sf.west) {SSH 22};
+\draw[arrow, dashed] (pb.west) -- ++(-0.3,0) |- (pk.west);
+\node[lbl, rotate=90] at ([xshift=-0.3cm,yshift=0.9cm]pf.west) {SSH 22};
 
 \end{tikzpicture}
 \end{adjustbox}

@@ -422,7 +422,7 @@ Policy & Conftest, OPA & Terraform plan JSON & Fails on a denied rule \\
 \end{tabular}
 \end{table}
 
-\needsinput{Confirm in the GitHub repository settings whether branch protection requires these jobs (and which ones) before merging into \texttt{main}, and whether the \texttt{production} environment requires a manual approval before the apply job runs.}
+We checked the repository settings through the GitHub API. The \texttt{main} branch has no branch protection and no ruleset, and the only environment defined in the repository is \texttt{github-pages}. In consequence, the jobs of Table~\ref{tab:gates} fail a workflow run but are not required checks: nothing prevents a change from being merged or pushed to \texttt{main} while a run is red, and the \texttt{apply} job of the Terraform workflow refers to environments (\texttt{staging}, \texttt{production}) that have no protection rules, so no manual approval or reviewer is needed before it runs. The gates are therefore effective only as long as the authors respect them. Making the main jobs required status checks and protecting the \texttt{production} environment with reviewers are listed as future work in Chapter~\ref{chap:conclusion}.
 
 %------------------------------------------------
 \section{Test Strategy}

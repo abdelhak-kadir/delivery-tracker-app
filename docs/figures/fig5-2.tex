@@ -1,35 +1,35 @@
 \begin{figure}[H]
 \centering
 \begin{adjustbox}{max width=\linewidth}
-\begin{tikzpicture}[node distance=0.9cm, >=latex, thick, font=\small]
+\begin{tikzpicture}[node distance=0.7cm, >=latex, thick, font=\small]
 
-\tikzstyle{stage}=[rectangle, draw=Eblue, fill=Ecyan!15, rounded corners=6pt, minimum width=2.6cm,
-                   minimum height=1cm, font=\small\bfseries, align=center]
-\tikzstyle{partial}=[rectangle, draw=Eorange, fill=Eorange!15, rounded corners=6pt, minimum width=2.6cm,
-                   minimum height=1cm, font=\small\bfseries, align=center]
+\tikzstyle{stage}=[rectangle, draw=Eblue, fill=Ecyan!15, rounded corners=6pt, minimum width=2.5cm,
+                   minimum height=1.3cm, font=\small, align=center]
+\tikzstyle{partial}=[rectangle, draw=Eorange, fill=Eorange!15, rounded corners=6pt, minimum width=2.5cm,
+                   minimum height=1.3cm, font=\small, align=center]
 \tikzstyle{arrow}=[->, Eblue, thick]
 
 % --- Application lane ---
-\node[stage] (push) {Push / pull\\request};
-\node[stage, right=of push] (build) {Build\\\scriptsize Maven / npm};
-\node[stage, right=of build] (test) {Test\\\scriptsize + Codecov (back)};
-\node[stage, right=of test] (image) {Image\\\scriptsize push to GHCR};
-\node[stage, right=of image] (scan) {Security\\scans};
-\node[partial, right=of scan] (cd) {Deploy\\\scriptsize partial};
+\node[stage] (push) {\textbf{Push / pull}\\\textbf{request}};
+\node[stage, right=of push] (build) {\textbf{Build}\\{\scriptsize Maven / npm}};
+\node[stage, right=of build] (test) {\textbf{Test}\\{\scriptsize + Codecov (back)}};
+\node[stage, right=of test] (image) {\textbf{Image}\\{\scriptsize push to GHCR}};
+\node[stage, right=of image] (scan) {\textbf{Security}\\\textbf{scans}};
+\node[partial, right=of scan] (cd) {\textbf{Deploy}\\{\scriptsize partial}};
 \draw[arrow] (push)--(build); \draw[arrow] (build)--(test); \draw[arrow] (test)--(image);
 \draw[arrow] (image)--(scan); \draw[arrow] (scan)--(cd);
-\node[font=\scriptsize\itshape, above=0.25cm of build.north east, anchor=south] {Application workflows (\texttt{ci-back}, \texttt{ci-front}, \texttt{cd-*})};
+\node[font=\scriptsize\itshape, anchor=south west] at ([yshift=0.2cm]push.north west) {Application workflows (\texttt{ci-back}, \texttt{ci-front}, \texttt{cd-*})};
 
 % --- Infrastructure lane ---
-\node[stage, below=1.7cm of push] (tpush) {Push to \texttt{main}\\\scriptsize paths \texttt{infra/**}};
-\node[stage, right=of tpush] (tscan) {tfsec,\\Checkov};
-\node[stage, right=of tscan] (plan) {Terraform\\plan};
-\node[stage, right=of plan] (opa) {Conftest\\(OPA)};
-\node[stage, right=of opa] (apply) {Apply\\\scriptsize on \texttt{main}};
-\node[stage, right=of apply] (drift) {Weekly\\drift check};
+\node[stage, below=1.7cm of push] (tpush) {\textbf{Push to \texttt{main}}\\{\scriptsize paths \texttt{infra/**}}};
+\node[stage, right=of tpush] (tscan) {\textbf{tfsec,}\\\textbf{Checkov}};
+\node[stage, right=of tscan] (plan) {\textbf{Terraform}\\\textbf{plan}};
+\node[stage, right=of plan] (opa) {\textbf{Conftest}\\\textbf{(OPA)}};
+\node[stage, right=of opa] (apply) {\textbf{Apply}\\{\scriptsize on \texttt{main}}};
+\node[stage, right=of apply] (drift) {\textbf{Weekly}\\\textbf{drift check}};
 \draw[arrow] (tpush)--(tscan); \draw[arrow] (tscan)--(plan); \draw[arrow] (plan)--(opa);
 \draw[arrow] (opa)--(apply); \draw[arrow] (apply)--(drift);
-\node[font=\scriptsize\itshape, above=0.25cm of tscan.north east, anchor=south] {Infrastructure workflow (\texttt{terraform.yaml}, \texttt{opa-policy-check.yaml})};
+\node[font=\scriptsize\itshape, anchor=south west] at ([yshift=0.2cm]tpush.north west) {Infrastructure workflow (\texttt{terraform.yaml}, \texttt{opa-policy-check.yaml})};
 
 \end{tikzpicture}
 \end{adjustbox}

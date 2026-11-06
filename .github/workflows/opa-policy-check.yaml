@@ -14,31 +14,53 @@ jobs:
     defaults:
       run:
         working-directory: infra
+    env:
+      # Secrets cannot be tested in `if:` directly; expose whether the token is set.
+      HAS_TF_TOKEN: ${{ secrets.TF_API_TOKEN != '' }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.5
-          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}  # for Terraform Cloud backend
 
       - name: Setup OPA
         uses: open-policy-agent/setup-opa@v2
         with:
           version: latest
 
+      # Always runs: the policies must parse and pass their unit tests
+      # (policy/security_test.rego uses sample plans, so no credentials are needed).
+      - name: Check policy syntax
+        run: opa check policy/
+
+      - name: Run policy unit tests
+        run: opa test policy/ -v
+
+      # The steps below evaluate the policies against a real plan. They need the
+      # Terraform Cloud token (TF_API_TOKEN), so they are skipped when it is not set.
+      - name: Note skipped plan check
+        if: env.HAS_TF_TOKEN != 'true'
+        run: echo "::warning::TF_API_TOKEN is not set, so the policies were only unit-tested, not evaluated against a real Terraform plan."
+
+      - name: Setup Terraform
+        if: env.HAS_TF_TOKEN == 'true'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}  # for Terraform Cloud backend
+
       - name: Terraform Init
+        if: env.HAS_TF_TOKEN == 'true'
         run: terraform init
 
       - name: Terraform Plan
+        if: env.HAS_TF_TOKEN == 'true'
         run: terraform plan -out=tfplan.binary
 
       - name: Convert Plan to JSON
+        if: env.HAS_TF_TOKEN == 'true'
         run: terraform show -json tfplan.binary > plan.json
 
-      - name: Run OPA
+      - name: Run OPA on the plan
+        if: env.HAS_TF_TOKEN == 'true'
         # deny[_] is undefined when no rule fires, so --fail-defined only fails on violations
         # (the bare deny set is an empty, i.e. defined, set and would always fail).
         run: opa eval --format pretty --fail-defined -i plan.json -d policy/ "data.terraform.security.deny[_]"

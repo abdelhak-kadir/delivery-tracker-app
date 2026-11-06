@@ -331,19 +331,16 @@ CI Frontend, \texttt{security-scans / security-gate} & 18445560020 & 64 \\
 \end{tabularx}
 \end{table}
 
-\screenshot{ghactions.png}{GitHub Actions run summary of the CI workflows (build, test, scan, image push).}{fig:ghactions}
-\needsinput{Screenshot of a recent GitHub Actions run summary, saved as \texttt{ghactions.png}.}
+\screenshot{ghactions.png}{GitHub Actions run summary of the CI Backend workflow on pull request \#11 (build, test, image push and security gate, all successful; 6 November 2026).}{fig:ghactions}
 
-\screenshot{ghactions-security.png}{Logs of the security-scan workflow in GitHub Actions.}{fig:ghactions-sec}
-\needsinput{Screenshot of the security-scan job logs, saved as \texttt{ghactions-security.png}.}
+\screenshot{ghactions-security.png}{Excerpt of the security-gate job log of the same run: Gitleaks, Semgrep and the two Trivy gates (log fetched with \texttt{gh run view --log} and rendered, since the GitHub log viewer requires a signed-in session).}{fig:ghactions-sec}
 
-\screenshot{github-security-tab.png}{Code-scanning alerts in the GitHub Security tab (four Trivy alerts, two open).}{fig:ghsecurity}
-\needsinput{Screenshot of the GitHub Security tab (code scanning), saved as \texttt{github-security-tab.png}.}
+\screenshot{github-security-tab.png}{Code-scanning alerts of the default branch, retrieved through the GitHub REST API (four Trivy alerts, two open, two fixed).}{fig:ghsecurity}
 
 \screenshot{ansible.png}{Output of the Ansible playbook configuring the servers.}{fig:ansible}
 \needsinput{Screenshot of a real Ansible playbook run against the servers, saved as \texttt{ansible.png}.}
 
-Figures~\ref{fig:ghactions}, \ref{fig:ghactions-sec} and~\ref{fig:ghsecurity} are expected to complement Tables~\ref{tab:ci-rates}, \ref{tab:ci-jobs} and~\ref{tab:scans}.
+Figures~\ref{fig:ghactions}, \ref{fig:ghactions-sec} and~\ref{fig:ghsecurity} complement Tables~\ref{tab:ci-rates}, \ref{tab:ci-jobs} and~\ref{tab:scans}.
 
 %------------------------------------------------
 \section{Synthesis}\label{sec:res-synthesis}

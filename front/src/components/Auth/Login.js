@@ -44,7 +44,7 @@ const Login = () => {
       ...credentials,
       [e.target.name]: e.target.value
     });
-    setError(''); // Clear error when user types
+    setError('');
   };
 
   const handleSubmit = async (e) => {
@@ -334,7 +334,7 @@ const Login = () => {
         </Fade>
       </Container>
 
-      {/* Add keyframe animation */}
+      
       <style jsx>{`
         @keyframes pulse {
           0% {

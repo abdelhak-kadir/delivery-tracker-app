@@ -45,11 +45,13 @@ jobs:
           name: npm-audit-report
           path: front/npm-audit.json
 
+      # The returntocorp/semgrep-action wrapper pins Semgrep 1.36, which crashes on
+      # current rules (ValueError: invalid rule severity) without failing the step.
+      # Run a pinned Semgrep CLI instead: findings or errors now fail the job.
       - name: Run Semgrep (SAST)
-        uses: returntocorp/semgrep-action@v1
-        with:
-          publishToken: ${{ secrets.SEMGREP_TOKEN }}
-          config: 'p/ci'
+        run: |
+          python3 -m pip install --quiet semgrep==1.171.0
+          semgrep scan --config p/ci --error --metrics=off front/src
 
       - name: Install Trivy
         run: |

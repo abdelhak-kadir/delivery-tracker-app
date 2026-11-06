@@ -1,0 +1,54 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{ensa-cover}[2025/01/01 ENSA PFE cover page (extracted from ensa-a.sty)]
+% Only the cover-page macros of ensa-a.sty. The full ensa-a style also
+% redefines chapter/section numbering, titlesec formats, the table of contents,
+% lstset and geometry, which clash with the report's own layout.
+\RequirePackage{tikz}
+\providecolor{Eblue}{HTML}{007ACC}
+\providecolor{Ecyan}{HTML}{17BEBB}
+
+\newcommand{\ensaSupervisorName}{Latifa Makhlouf}
+
+\newcommand{\pagedegarde}[5]{%
+\thispagestyle{empty}
+\begin{tikzpicture}[remember picture, overlay]
+\path (current page.center) coordinate (E);
+\node[opacity=0.12] at (E) {\includegraphics[scale=0.2]{IbnZohr.png}};
+\node at ([yshift=12cm]E) {\includegraphics[scale=0.55]{Logo.png}};
+\node at ([yshift=9.5cm, xshift=6.5cm]E) {\textbf{#1}};
+\node[scale=2.25] at ([yshift=7.25cm]E) {\textbf{Final Year Project Report #2}};
+\node[scale=1.75] at ([yshift=5.5cm]E) {\textbf{Presented by:}};
+\node[scale=1.25] at ([yshift=4.5cm]E) {\textbf{#3}};
+\node[scale=1.25] at ([yshift=3.75cm]E) {\textbf{#4}};
+\node[scale=1.75] at ([yshift=2.25cm]E) {\textbf{Major:} #5};
+\end{tikzpicture}
+\vspace*{11cm}
+\suitepagedegarde}
+
+% #1 title, #2/#6/#7 free lines (right column), #3 supervisor title,
+% #4 company logo, #5 logo scale, #8 optional bottom line (e.g. date; empty = none)
+\newcommand{\suitepagedegarde}[8]{%
+\begin{center}
+\begin{tikzpicture}[overlay]
+\node[text width=12cm, align=center, scale=1.5]  (E) {\sc #1};
+\draw[line width=1.25mm, Eblue] ([yshift=0.5cm, xshift=-8.75cm]E.north)--([yshift=0.5cm, xshift=8.75cm]E.north);
+\draw[line width=1.25mm, Eblue] ([xshift=-8.75cm, yshift=-0.5cm]E.south)--([yshift=-0.5cm, xshift=8.75cm]E.south);
+\end{tikzpicture}
+\end{center}
+\vspace{2.5cm}
+\noindent
+\begin{minipage}[t]{0.6\linewidth}
+\raggedright
+\textbf{\large Supervised by:}\\[0.2cm]
+\textbf{#3 \ensaSupervisorName}
+\end{minipage}
+\begin{minipage}[t]{0.4\linewidth}
+\begin{center}
+\textbf{\large Company:}\\[0.25cm]
+\includegraphics[scale=#5]{#4}\\[0.2cm]
+\textbf{#2}\textbf{#6}\textbf{#7}
+\end{center}
+\end{minipage}
+\vfill
+\begin{center}\textbf{#8}\end{center}}
+\endinput

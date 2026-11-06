@@ -1,39 +1,59 @@
 package terraform.security
 
-# --- Policy 1: Enforce Bastion Host as the only public SSH entry ---
-# Deny any Droplet firewall from exposing port 22 to the public internet
-# unless it is explicitly tagged as a bastion host.
-deny[msg] {
-  some rc in input.resource_changes
-  rc.type == "digitalocean_firewall"
-  rc.change.after.droplet_ids[_] == digitalocean_droplet.frontend.id
-  inbound := rc.change.after.inbound_rule[_]
-  inbound.protocol == "tcp"
-  inbound.port_range == "22"
-  inbound.source_addresses[_] == "0.0.0.0/0"
-  msg := sprintf("Public SSH access is forbidden on the frontend firewall (%s). Use a bastion host.", [rc.address])
+import rego.v1
+
+# Notes on matching
+# - Resources live inside modules, so their plan address is e.g.
+#   module.staging.digitalocean_firewall.frontend_fw; match on rc.type / rc.name
+#   (or on the planned resource name "<env>-<role>-fw"), never on Terraform
+#   expressions such as digitalocean_droplet.frontend.id.
+# - droplet_ids is unknown at plan time (computed), so firewalls are identified
+#   by their planned name.
+
+public_cidrs := {"0.0.0.0/0", "::/0"}
+
+# Planned (non-destroyed) firewalls.
+firewalls contains rc if {
+	some rc in input.resource_changes
+	rc.type == "digitalocean_firewall"
+	rc.change.after != null
 }
 
-deny[msg] {
-  some rc in input.resource_changes
-  rc.type == "digitalocean_firewall"
-  rc.change.after.droplet_ids[_] == digitalocean_droplet.backend.id
-  inbound := rc.change.after.inbound_rule[_]
-  inbound.protocol == "tcp"
-  inbound.port_range == "22"
-  inbound.source_addresses[_] == "0.0.0.0/0"
-  msg := sprintf("Public SSH access is forbidden on the backend firewall (%s). Use a bastion host.", [rc.address])
+ssh_rule(rule) if {
+	rule.protocol == "tcp"
+	rule.port_range == "22"
 }
 
-# --- Policy 2: Enforce strict SSH source IP restrictions on the bastion ---
-# Deny any bastion firewall from allowing SSH from the public internet.
-deny[msg] {
-  some rc in input.resource_changes
-  rc.type == "digitalocean_firewall"
-  startswith(rc.change.after.name, "bastion")
-  rule := rc.change.after.inbound_rule[_]
-  rule.protocol == "tcp"
-  rule.port_range == "22"
-  count(rule.source_addresses) == 0
-  msg := sprintf("Bastion firewall %s must have a source IP CIDR for SSH access.", [rc.change.after.name])
+# --- Policy 1: Bastion host is the only public SSH entry ---
+# No firewall (frontend, backend, ...) may expose SSH to the public internet.
+deny contains msg if {
+	some rc in firewalls
+	not endswith(rc.change.after.name, "-bastion-fw")
+	some rule in rc.change.after.inbound_rule
+	ssh_rule(rule)
+	some cidr in rule.source_addresses
+	cidr in public_cidrs
+	msg := sprintf("Public SSH access is forbidden on firewall %s (%s). Use the bastion host.", [rc.change.after.name, rc.address])
+}
+
+# --- Policy 2: Strict SSH source restrictions on the bastion ---
+# The bastion firewall may only allow SSH from explicit admin CIDRs: no public
+# CIDR, and no SSH rule without any source.
+deny contains msg if {
+	some rc in firewalls
+	endswith(rc.change.after.name, "-bastion-fw")
+	some rule in rc.change.after.inbound_rule
+	ssh_rule(rule)
+	some cidr in rule.source_addresses
+	cidr in public_cidrs
+	msg := sprintf("Bastion firewall %s must not allow SSH from the public internet (%s).", [rc.change.after.name, cidr])
+}
+
+deny contains msg if {
+	some rc in firewalls
+	endswith(rc.change.after.name, "-bastion-fw")
+	some rule in rc.change.after.inbound_rule
+	ssh_rule(rule)
+	count(object.get(rule, "source_addresses", [])) == 0
+	msg := sprintf("Bastion firewall %s must have a source IP CIDR for SSH access.", [rc.change.after.name])
 }

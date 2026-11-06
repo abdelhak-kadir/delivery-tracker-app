@@ -1,0 +1,25 @@
+\begin{figure}[H]
+\centering
+\begin{adjustbox}{max width=0.9\linewidth}
+\begin{tikzpicture}[
+    every node/.style={font=\sffamily},
+    layer/.style={rectangle,rounded corners,draw=Eblue!80,fill=Ecyan!10,
+                  minimum width=11.2cm,minimum height=1.2cm,align=center},
+    arrow/.style={->,>=Stealth,thick,Eblue}
+]
+
+\node[layer] (frontend) {React 19 frontend (MUI 7, React Router 7, Axios)};
+\node[layer,below=1cm of frontend] (backend) {Spring Boot 3.5.6 REST API (Java 21, Spring Security, JWT, JPA)};
+\node[layer,below=1cm of backend] (database) {PostgreSQL 16 database};
+\node[layer,below=1cm of database,fill=Eblue!5,draw=Eblue!60] (infra) {Infrastructure: Docker, Terraform, Ansible};
+\node[layer,below=1cm of infra,fill=Ecyan!5,draw=Eblue!50] (pipeline) {GitHub Actions: build, test, security scans, delivery};
+
+\draw[arrow] (frontend) -- (backend);
+\draw[arrow] (backend) -- (database);
+\draw[arrow] (database) -- (infra);
+\draw[arrow] (infra) -- (pipeline);
+
+\end{tikzpicture}
+\end{adjustbox}
+\caption{High-level architecture of the Delivery Tracker application}
+\end{figure}

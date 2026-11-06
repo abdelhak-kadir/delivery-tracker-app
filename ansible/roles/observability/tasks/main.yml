@@ -2,32 +2,37 @@
   get_url:
     url: "https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz"
     dest: /tmp/node_exporter.tar.gz
-  when: monitoring.enabled
+  when: monitoring.enabled | default(false)
 
 - name: Extract Node Exporter
   unarchive:
     src: /tmp/node_exporter.tar.gz
     dest: /usr/local/bin/
     remote_src: yes
-    extra_opts: [--strip-components=1]
+    extra_opts: [--strip-components=1, --wildcards, '*/node_exporter']
     creates: /usr/local/bin/node_exporter
-  when: monitoring.enabled
+  when: monitoring.enabled | default(false)
 
 - name: Create Node Exporter systemd service
   template:
-    src: node-exporter.service.j2
+    src: node_exporter.service.j2
     dest: /etc/systemd/system/node-exporter.service
-  when: monitoring.enabled
-  notify: start node-exporter
+    mode: '0644'
+  when: monitoring.enabled | default(false)
+  notify:
+    - reload systemd
+    - start node-exporter
 
 - name: Configure log monitoring script
   template:
     src: log-monitor.sh.j2
     dest: /usr/local/bin/log-monitor.sh
     mode: '0755'
+  when: monitoring.enabled | default(false)
 
 - name: Add log monitoring to crontab
   cron:
     name: "Application log monitoring"
     minute: "*/5"
     job: "/usr/local/bin/log-monitor.sh"
+  when: monitoring.enabled | default(false)

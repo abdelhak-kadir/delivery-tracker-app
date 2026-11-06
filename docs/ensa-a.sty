@@ -1,0 +1,287 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{ensa-a}[2023/10/29 LaTeX package to write PFE/PFA reports -- By Euler Med]
+
+%--------------- Required Packages
+
+\RequirePackage{geometry}
+\geometry{
+top=2cm, 
+bottom=2cm,
+left=2cm,
+right=2cm
+}
+
+\RequirePackage{float}
+\RequirePackage{eso-pic}
+\RequirePackage{setspace}
+\RequirePackage{tikz}
+\RequirePackage{tcolorbox}
+\RequirePackage{xcolor}
+\RequirePackage[english]{babel}
+\RequirePackage[explicit]{titlesec}
+\RequirePackage{hyperref}
+\RequirePackage{titletoc}
+\RequirePackage{colortbl}
+\RequirePackage{listings}
+\RequirePackage{lettrine}
+\RequirePackage[object=vectorian]{pgfornament}
+\RequirePackage{calligra}
+
+
+\definecolor{Eblue}{HTML}{303c94}
+\definecolor{Ecyan}{HTML}{4CB9E7}
+\definecolor{Comment}{HTML}{5C469C}
+\definecolor{Function}{HTML}{3E00FF}
+\definecolor{codegray}{HTML}{323232}
+\definecolor{codepurple}{HTML}{C62A88}
+\definecolor{backcolour}{HTML}{B9EDDD}
+
+%New commands
+
+\makeatletter
+\let\ps@plain\ps@empty
+\makeatother
+\newcommand{\pagedegarde}[5]{
+\pagestyle{empty}
+\begin{tikzpicture}[remember picture, overlay]
+\path 
+(current page.north west) coordinate (A) 
+(current page.north east) coordinate (B)
+(current page.south east) coordinate (C)
+(current page.south west) coordinate (D)
+(current page.center) coordinate (E);
+\node[opacity=0.12] at (E) {\includegraphics[scale=0.2]{IbnZohr.png}};
+\node at ([yshift=12cm]E) {\includegraphics[scale=0.55]{Logo.png}};
+\node at ([yshift=9.5cm, xshift=6.5cm]E) {\textbf{#1}};
+\node[scale=2.25] at ([yshift=7.25cm]E) {\textbf{Final Year Project Report #2:}};
+\node[scale=1.75] at ([yshift=5.5cm]E) {\textbf{Presented by:}};
+\node[scale=1.25] at ([yshift=4.5cm]E) {\textbf{#3}};
+\node[scale=1.25] at ([yshift=3.75cm]E) {\textbf{#4}};
+\node[scale=1.75] at ([yshift=2.25cm]E) {\textbf{Major:} #5};
+\end{tikzpicture}
+\vspace{12cm}
+\suitepagedegarde
+}
+\newcommand{\suitepagedegarde}[8]{
+\vspace{0.75cm}
+\begin{center}
+\begin{tikzpicture}[overlay]
+\node[text width=12cm, align=center, scale=1.725]  (E) {\sc #1};
+\draw[line width=1.25mm, Eblue] ([yshift=0.5cm, xshift=-8.75cm]E.north)--([yshift=0.5cm, xshift=8.75cm]E.north);
+\draw[line width=1.25mm, Eblue] ([xshift=-8.75cm, yshift=-0.5cm]E.south)--([yshift=-0.5cm, xshift=8.75cm]E.south);
+\end{tikzpicture}
+\end{center}
+\vspace{3cm}
+\begin{minipage}[t]{0.6\linewidth}
+\raggedright
+\textbf{\scalebox{1.85}{Supervised by:}}\\[0.5cm]
+\large \textbf{#3} Latifa Makhlouf
+\end{minipage}
+\begin{minipage}[t]{0.4\linewidth}
+\begin{center}
+\textbf{\scalebox{1.75}{Company:}}\\[0.25cm]
+\includegraphics[scale=#5]{#4}
+\end{center}
+\end{minipage}
+\vspace{0.75cm}
+\begin{minipage}[C]{0.6\linewidth}
+\phantom{Spacing to align with the names on the right}
+\end{minipage}
+\begin{minipage}[C]{0.4\linewidth}
+\textbf{#2}\\[0.15cm]
+\textbf{#6}\\[0.15cm]
+\textbf{#7}
+\end{minipage}
+}
+
+
+\renewcommand\thechapter{\arabic{chapter}}
+\renewcommand\thesection{\arabic{section}}
+
+\titleformat{name=\chapter,numberless}[display]
+{\bfseries\Huge}
+{}
+{0pt}
+{
+\vspace*{-2.75cm}
+\begin{tikzpicture}[]
+\fill[Ecyan] (1,-0.5)rectangle(18,0.5)node[pos=0.115] (pos2){} node[pos=0.5] (pos) {};
+\node[Eblue] at (pos) {\colorbox{white}{\scalebox{1.35}{\ #1\ }}};
+\end{tikzpicture}}
+
+\titleformat{\chapter}[display]
+{\bfseries\Huge}
+{}
+{0pt}
+{
+\begin{tikzpicture}[remember picture, overlay]
+\draw[Eblue, line width=0.5mm] ([xshift=-2.5cm]current page.north east)--([xshift=-2.5cm, yshift=-5cm]current page.north east);
+\node[scale=1.5, Ecyan, opacity=0.75] at ([xshift=-1.5cm, yshift=-3cm]current page.north east) {\thechapter};
+\node[anchor=south east, Ecyan, text width=16cm] at ([xshift=-2.5cm, yshift=-4.5cm]current page.north east) {#1};
+\end{tikzpicture}
+\vspace*{-1.85cm}
+}
+
+\titleformat{\section}[display]
+{\bfseries\LARGE}
+{}
+{0pt}
+{\vspace*{-1cm}
+\begin{tikzpicture}
+\fill[Ecyan] (-0.5,-0.5)rectangle(.5,.5) node[midway, Eblue] {\thesection};
+\node[anchor=west, Ecyan] at (0.75,0) {#1}; 
+\end{tikzpicture}
+}
+
+\titleformat{\subsection}[display]
+{\bfseries\Large}
+{}
+{0pt}
+{\vspace*{-.75cm}
+\textbf{\textcolor{Eblue}{\thesubsection}\ \color{Eblue}#1}
+}
+
+\renewcommand{\sectionmark}[1]{\markright{\bfseries\color{Ecyan} #1}}
+\renewcommand{\chaptermark}[1]{\markboth{\if@mainmatter\ \fi\bfseries\color{Ecyan}#1}{}}
+
+\newcommand{\Newpage}{\newpage
+\AddToShipoutPicture{
+\begin{tikzpicture}[remember picture, overlay]
+\path 
+(current page.north west) coordinate (A) 
+(current page.north east) coordinate (B)
+(current page.south east) coordinate (C)
+(current page.south west) coordinate (D)
+(current page.center) coordinate (E);
+\ifodd\thepage
+\draw[line width=0.5mm, Eblue] ([xshift=1cm, yshift=1.25cm]D) node[below=7.5, black] (Node) {}--([xshift=-3cm, yshift=1.25cm]C);
+\node[anchor=west, scale=1.15] at ([yshift=-0.1cm]Node) {\leftmark};
+\node[anchor=west, scale=1.15, Ecyan] at ([xshift=18cm]Node) {\textbf{\thepage}};
+\else
+\draw[line width=0.65mm, Eblue] ([xshift=3cm, yshift=1.25cm]D)--([xshift=-1cm, yshift=1.25cm]C) node[below=7.5, black] (Node) {};
+\node[anchor=east, scale=1.15, Ecyan] at ([xshift=-18cm]Node) {\textbf{\thepage}};
+\node[anchor=east, scale=1.15] at ([yshift=-0.1cm]Node) {\rightmark};
+\fi
+\end{tikzpicture}
+}}
+
+\contentsmargin{0cm}
+\titlecontents{part}[0pc]{}%
+{}
+{}
+{\;\hfill\;\Large\bfseries\thecontentspage}%
+
+\titlecontents{chapter}[2pc]
+{\addvspace{1pt}\bfseries\color{Eblue}\LARGE}
+{\bfseries\contentslabel[\thecontentslabel]{2.5pc}}
+{}
+{\dotfill\large\bfseries\thecontentspage}
+[]
+
+\titlecontents{section}[0.75cm]
+{\addvspace{2pt}\color{Ecyan}\Large}
+{\bfseries\hspace{1.25cm}\contentslabel[\thecontentslabel]{2.25pc}}
+{}
+{\dotfill\normalsize\bfseries\thecontentspage}
+[]
+
+\titlecontents{subsection}[0.75cm]
+{\addvspace{1.75pt}\color{Ecyan}\large}
+{\bfseries\hspace{1.75cm}\contentslabel[\thecontentslabel]{2.25pc}}
+{}
+{\dotfill\small\bfseries\thecontentspage}
+[]
+
+\makeatletter
+\renewcommand{\tableofcontents}{
+\vspace*{-20\p@}
+\vspace*{2cm}
+\begin{tikzpicture}[remember picture, overlay]
+\path 
+(current page.north west) coordinate (A) 
+(current page.north east) coordinate (B)
+(current page.south east) coordinate (C)
+(current page.south west) coordinate (D)
+(current page.center) coordinate (E);
+\draw[fill=Eblue,draw=Eblue] ([yshift=13cm, xshift=-7cm]E)rectangle++ (14,-2) node[midway] (pos) {};
+\node at (pos) {\Huge\scshape\bfseries \textcolor{white}{\contentsname :}};
+\end{tikzpicture}
+\vspace{2cm}
+\@starttoc{toc}}
+\makeatother
+
+\newenvironment{remerciement}[1][]{\addcontentsline{toc}{chapter}{Remerciements}
+\begin{tikzpicture}[remember picture, overlay]
+\path 
+(current page.north west) coordinate (A) 
+(current page.north east) coordinate (B)
+(current page.south east) coordinate (C)
+(current page.south west) coordinate (D)
+(current page.center) coordinate (E);
+\node[Eblue] at ([xshift=4cm, yshift=-3.7cm]A){\pgfornament[scale=.35]{72}};
+\node[Eblue] at ([xshift=-4cm, yshift=-3.7cm]B){\pgfornament[scale=.35]{73}};
+\node[Eblue, scale=0.7] at ([yshift=-4.25cm, xshift=-10.25cm]B){\pgfornament{85}};
+\node[Ecyan] at ([yshift=-3cm, xshift=-10.25cm]B) {\scalebox{3}{\textcalligra{Remerciements }}};
+\end{tikzpicture} 
+\vspace*{4cm}
+
+\Large
+}
+{}
+
+
+\newfloat{Code}{htbp}{los}[chapter]
+\titlecontents{Code}[0em]{}
+{\thecontentslabel\hspace*{1.5em}}{}{\dotfill{\contentspage}}
+
+\def\frenchlistfigurename{\color{Eblue}\Huge\scshape\bfseries Liste des figures :}
+
+\titlecontents{figure}[0em]{}
+{\thecontentslabel\hspace*{1.5em}}{}{\dotfill\contentspage}
+
+\titlecontents{table}[0em]{}
+{\thecontentslabel\hspace*{1.5em}}{}{\dotfill\contentspage}
+
+\titlecontents{Code}[0em]
+  {\vspace{0.5em}} 
+  {\thecontentslabel\hspace*{1.5em}} 
+  {} 
+  {\dotfill\contentspage} 
+  [\vspace{0.5em}]
+
+
+\newcommand{\listofcodes}{\listof{Code}{\color{Eblue}\Huge\scshape\bfseries Liste des codes :}}
+
+\setlength\parindent{0pt}
+
+
+
+
+
+
+
+
+\lstset{frame=single,
+    framerule=0.25mm,
+    rulecolor=\color{Eblue},
+    backgroundcolor=\color{backcolour!50},
+    commentstyle=\itshape\color{Comment},
+    keywordstyle=\color{Function},
+    numberstyle=\ttfamily\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+
+
+

@@ -1,0 +1,23 @@
+\begin{figure}[H]
+\centering
+\begin{adjustbox}{max width=\linewidth}
+\begin{tikzpicture}[
+    node distance=2.0cm,
+    every node/.style={align=center,font=\sffamily},
+    actor/.style={rectangle,rounded corners,draw=Eblue,fill=Ecyan!10,minimum width=3.4cm,minimum height=1.3cm},
+    arrow/.style={->,>=Stealth,thick,Eblue}
+]
+
+\node[actor] (client) {Clients\\(business customers)};
+\node[actor,right=of client] (company) {Youssra\\Trans-Négoce};
+\node[actor,right=of company] (driver) {Drivers};
+\node[actor,right=of driver] (customer) {Delivery\\destinations};
+
+\draw[arrow] (client) -- node[above]{Transport\\orders} (company);
+\draw[arrow] (company) -- node[above]{Dispatch} (driver);
+\draw[arrow] (driver) -- node[above]{Delivery} (customer);
+
+\end{tikzpicture}
+\end{adjustbox}
+\caption{Simplified service flow of Youssra Trans-Négoce (to be confirmed with the company)}
+\end{figure}

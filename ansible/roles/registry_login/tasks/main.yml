@@ -1,7 +1,10 @@
-- name: Login to DigitalOcean Container Registry
-  docker_login:
-    registry: "{{ registry.url }}"
-    username: "{{ registry_token | default(lookup('env', 'DO_REGISTRY_TOKEN')) }}"
-    password: "{{ registry_token | default(lookup('env', 'DO_REGISTRY_TOKEN')) }}"
-  when: registry_token is defined or lookup('env', 'DO_REGISTRY_TOKEN')
+# CI pushes images to GitHub Container Registry (ghcr.io/<owner>/...).
+# Credentials: a GitHub token with read:packages. Only needed while the packages are private.
+- name: Login to GitHub Container Registry
+  community.docker.docker_login:
+    registry: "{{ registry.url | default('ghcr.io') }}"
+    username: "{{ vault_ghcr_username | default(registry.namespace) }}"
+    password: "{{ vault_ghcr_token | default(lookup('env', 'GHCR_TOKEN')) }}"
+  no_log: true
+  when: (vault_ghcr_token is defined) or (lookup('env', 'GHCR_TOKEN') | default('') != '')
   tags: ['registry', 'login']

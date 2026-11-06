@@ -1,5 +1,5 @@
 // src/components/Clients/Clients.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -81,12 +81,12 @@ const Clients = () => {
     }
   ];
 
-  // Fetch clients
-  useEffect(() => {
-    fetchClients();
-  }, [page, size]);
+  // Show notification
+  const showNotification = useCallback((message, severity = 'success') => {
+    setNotification({ open: true, message, severity });
+  }, []);
 
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async () => {
     try {
       setLoading(true);
       const response = await clientsAPI.getAll(page, size);
@@ -98,7 +98,11 @@ const Clients = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, size, showNotification]);
+
+  useEffect(() => {
+    fetchClients();
+  }, [fetchClients]);
 
   const handleCreate = () => {
     setEditingClient(null);
@@ -176,11 +180,6 @@ const Clients = () => {
     if (formErrors[field]) {
       setFormErrors({ ...formErrors, [field]: null });
     }
-  };
-
-  // Show notification
-  const showNotification = (message, severity = 'success') => {
-    setNotification({ open: true, message, severity });
   };
 
   return (

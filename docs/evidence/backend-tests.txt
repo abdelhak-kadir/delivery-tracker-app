@@ -1,0 +1,43 @@
+# Command: cd back && JAVA_HOME=<openjdk@21> ./mvnw clean verify -B
+# Date: 2026-11-05 23:28:37 +0000
+# Machine: macOS 26.7.2, Intel(R) Core(TM) i5-1038NG7 CPU @ 2.00GHz, 16 GB RAM, Docker Desktop
+# Commit: f5a0bd2 (+ uncommitted local changes)
+
+## Test count per class (target/surefire-reports/*.xml)
+com.delivery_tracker_app.app.AppApplicationTests                                 tests=  1 fail=0 err=0 skip=0 time=3.73s
+com.delivery_tracker_app.app.controller.v1.AuthControllerTest                    tests=  3 fail=0 err=0 skip=0 time=1.52s
+com.delivery_tracker_app.app.controller.v1.ClientControllerTest                  tests=  9 fail=0 err=0 skip=0 time=0.98s
+com.delivery_tracker_app.app.controller.v1.DriverControllerTest                  tests= 10 fail=0 err=0 skip=0 time=2.02s
+com.delivery_tracker_app.app.controller.v1.TransportLogControllerTest            tests=  8 fail=0 err=0 skip=0 time=1.48s
+com.delivery_tracker_app.app.integration.v1.DriverIntegrationTest                tests=  5 fail=0 err=0 skip=0 time=0.24s
+com.delivery_tracker_app.app.integration.v1.SecurityIntegrationTest              tests=  7 fail=0 err=0 skip=0 time=7.99s
+com.delivery_tracker_app.app.repository.ClientRepoTest                           tests=  4 fail=0 err=0 skip=0 time=14.05s
+com.delivery_tracker_app.app.repository.DriverRepoTest                           tests=  4 fail=0 err=0 skip=0 time=0.11s
+com.delivery_tracker_app.app.repository.TransportLogRepoTest                     tests=  4 fail=0 err=0 skip=0 time=0.20s
+com.delivery_tracker_app.app.service.serviceimpl.ClientServiceImplTest           tests=  8 fail=0 err=0 skip=0 time=0.12s
+com.delivery_tracker_app.app.service.serviceimpl.DriverServiceImplTest           tests=  8 fail=0 err=0 skip=0 time=0.15s
+com.delivery_tracker_app.app.service.serviceimpl.TransportLogServiceImplTest     tests= 11 fail=0 err=0 skip=0 time=0.97s
+TOTAL tests=82 failures=0 errors=0 skipped=0 sum-of-class-time=33.57s
+
+## Maven summary
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.146 s -- in com.delivery_tracker_app.app.service.serviceimpl.DriverServiceImplTest
+[INFO] Tests run: 82, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+[INFO] Total time:  54.574 s
+[INFO] Finished at: 2026-11-06T00:27:36+01:00
+real	1m0.338s
+
+## JaCoCo (target/site/jacoco/jacoco.csv) per package and overall
+package                                                                line         branch    instr   method
+com.delivery_tracker_app.app                                   33.3% (1/3)     n/a (0/0)    37.5%    50.0%
+com.delivery_tracker_app.app.config                            89.8% (106/118)   68.8% (11/16)    90.9%    92.3%
+com.delivery_tracker_app.app.controller.v1                    100.0% (49/49)     n/a (0/0)   100.0%   100.0%
+com.delivery_tracker_app.app.dto.v1.auth                      100.0% (2/2)     n/a (0/0)   100.0%   100.0%
+com.delivery_tracker_app.app.dto.v1.client                    100.0% (3/3)     n/a (0/0)   100.0%   100.0%
+com.delivery_tracker_app.app.dto.v1.common                     75.0% (3/4)     n/a (0/0)    85.1%    75.0%
+com.delivery_tracker_app.app.dto.v1.driver                    100.0% (3/3)     n/a (0/0)   100.0%   100.0%
+com.delivery_tracker_app.app.dto.v1.transportLog              100.0% (3/3)     n/a (0/0)   100.0%   100.0%
+com.delivery_tracker_app.app.exception                        100.0% (30/30)   50.0% (1/2)    99.2%   100.0%
+com.delivery_tracker_app.app.mapper                             8.8% (7/80)     n/a (0/0)    11.1%    36.4%
+com.delivery_tracker_app.app.service.serviceimpl               97.1% (99/102)   57.1% (8/14)    97.1%   100.0%
+OVERALL                                                        77.1% (306/397)   62.5% (20/32)    85.4%    90.2%

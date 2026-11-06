@@ -1,0 +1,23 @@
+[
+ {
+  "RuleID": "generic-api-key",
+  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+  "StartLine": 7,
+  "EndLine": 7,
+  "StartColumn": 1,
+  "EndColumn": 55,
+  "Match": "JWT_SECRET=REDACTED",
+  "Secret": "REDACTED",
+  "File": ".env.example",
+  "SymlinkFile": "",
+  "Commit": "88a18bbceff518a4e8637b3010e5a33a4c5b5412",
+  "Link": "https://github.com/oubellaismail/delivery-tracker-app/blob/88a18bbceff518a4e8637b3010e5a33a4c5b5412/.env.example#L7",
+  "Entropy": 4.942275,
+  "Author": "abdelhak-kadir",
+  "Email": "abdelhakaitkadir@gmai.com",
+  "Date": "2025-09-01T22:07:54Z",
+  "Message": "making more change in components",
+  "Tags": [],
+  "Fingerprint": "88a18bbceff518a4e8637b3010e5a33a4c5b5412:.env.example:generic-api-key:7"
+ }
+]

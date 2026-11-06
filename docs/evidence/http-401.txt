@@ -1,0 +1,37 @@
+# Command: curl against http://localhost:8080 (docker local stack)
+# Date: 2026-11-05 23:59:47 +0000
+# Machine: macOS 26.7.2, Intel(R) Core(TM) i5-1038NG7 CPU @ 2.00GHz, 16 GB RAM, Docker Desktop
+# Commit: f5a0bd2 (+ uncommitted local changes)
+
+### 1. GET /api/v1/clients without token
+HTTP/1.1 401 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json;charset=ISO-8859-1
+Content-Length: 171
+Date: Thu, 05 Nov 2026 23:59:47 GMT
+
+{"status":401,"error":"Unauthorized","message":"Authentication is required to access this resource.","path":"/api/v1/clients","timestamp":"2026-11-05T23:59:47.858708479Z"}
+### 2. Wrong credentials login
+HTTP/1.1 401 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Thu, 05 Nov 2026 23:59:48 GMT
+
+{"status":401,"error":"Unauthorized","message":"Invalid username or password.","path":"/api/v1/auth/login","timestamp":"2026-11-05T23:59:48.254942726Z"}

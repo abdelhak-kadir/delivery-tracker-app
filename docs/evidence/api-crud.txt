@@ -1,0 +1,134 @@
+# Command: python3 crud script (urllib) against http://localhost:8080; token redacted
+# Date: 2026-11-06 00:00:03 +0000
+# Machine: macOS 26.7.2, Intel(R) Core(TM) i5-1038NG7 CPU @ 2.00GHz, 16 GB RAM, Docker Desktop
+# Commit: f5a0bd2 (+ uncommitted local changes)
+
+>>> POST /api/v1/clients   [Authorization: Bearer <redacted>]
+>>> body: {"name": "Evidence Client", "identityId": "ID-EV-001"}
+<<< HTTP 201  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"success":true,"message":"Client created successfully","data":{"id":1,"name":"Evidence Client","identityId":"ID-EV-001"}}
+
+>>> GET /api/v1/clients/1   [Authorization: Bearer <redacted>]
+<<< HTTP 200  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"success":true,"message":"Client retrieved successfully","data":{"id":1,"name":"Evidence Client","identityId":"ID-EV-001"}}
+
+>>> PUT /api/v1/clients   [Authorization: Bearer <redacted>]
+>>> body: {"id": 1, "name": "Evidence Client Upd", "identityId": "ID-EV-001"}
+<<< HTTP 200  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"success":true,"message":"Client updated successfully","data":{"id":1,"name":"Evidence Client Upd","identityId":"ID-EV-001"}}
+
+>>> POST /api/v1/drivers   [Authorization: Bearer <redacted>]
+>>> body: {"name": "Evidence Driver", "plateNumber": "EV-1234-A"}
+<<< HTTP 201  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"success":true,"message":"Driver created successfully","data":{"id":1,"name":"Evidence Driver","plateNumber":"EV-1234-A"}}
+
+>>> GET /api/v1/drivers/1   [Authorization: Bearer <redacted>]
+<<< HTTP 200  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"success":true,"message":"Driver retrieved successfully","data":{"id":1,"name":"Evidence Driver","plateNumber":"EV-1234-A"}}
+
+>>> PUT /api/v1/drivers   [Authorization: Bearer <redacted>]
+>>> body: {"id": 1, "name": "Evidence Driver Upd", "plateNumber": "EV-1234-A"}
+<<< HTTP 200  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"success":true,"message":"Driver updated successfully","data":{"id":1,"name":"Evidence Driver Upd","plateNumber":"EV-1234-A"}}
+
+>>> POST /api/v1/trans_logs   [Authorization: Bearer <redacted>]
+>>> body: {"clientId": 1, "driverId": 1, "loadDate": "2026-11-01", "loadLocation": "Casablanca", "unloadDate": "2026-11-02", "unloadLocation": "Marrakech", "destinationName": "Warehouse A", "deliveryNote": "evidence", "advance": 100, "fuelQuantity": 50, "fuelPricePerLiter": 11.5, "variableCharge": 20, "chargePrice": 30, "clientTariff": 1500, "tripPrice": 1200, "operator": "op1", "commercial": "com1"}
+<<< HTTP 201  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"success":true,"message":"Transport log created successfully","data":{"id":1,"client":{"id":1,"name":"Evidence Client Upd","identityId":"ID-EV-001"},"driver":{"id":1,"name":"Evidence Driver Upd","plateNumber":"EV-1234-A"},"loadDate":"2026-11-01","loadLocation":"Casablanca","unloadDate":"2026-11-02","unloadLocation":"Marrakech","destinationName":"Warehouse A","deliveryNote":"evidence","advance":100,"fuelQuantity":50,"fuelPricePerLiter":11.5,"variableCharge":20,"chargePrice":30,"clientTariff":1500,"tripPrice":1200,"operator":"op1","commercial":"com1"}}
+
+>>> GET /api/v1/trans_logs/1   [Authorization: Bearer <redacted>]
+<<< HTTP 200  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"success":true,"message":"Transport log retrieved successfully","data":{"id":1,"client":{"id":1,"name":"Evidence Client Upd","identityId":"ID-EV-001"},"driver":{"id":1,"name":"Evidence Driver Upd","plateNumber":"EV-1234-A"},"loadDate":"2026-11-01","loadLocation":"Casablanca","unloadDate":"2026-11-02","unloadLocation":"Marrakech","destinationName":"Warehouse A","deliveryNote":"evidence","advance":100.00,"fuelQuantity":50.00,"fuelPricePerLiter":11.50,"variableCharge":20.00,"chargePrice":30.00,"clientTariff":1500.00,"tripPrice":1200.00,"operator":"op1","commercial":"com1"}}
+
+>>> PUT /api/v1/trans_logs   [Authorization: Bearer <redacted>]
+>>> body: {"clientId": 1, "driverId": 1, "loadDate": "2026-11-01", "loadLocation": "Casablanca", "unloadDate": "2026-11-02", "unloadLocation": "Marrakech", "destinationName": "Warehouse A", "deliveryNote": "updated", "advance": 100, "fuelQuantity": 50, "fuelPricePerLiter": 11.5, "variableCharge": 20, "chargePrice": 30, "clientTariff": 1500, "tripPrice": 1200, "operator": "op1", "commercial": "com1", "id": 1}
+<<< HTTP 200  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"success":true,"message":"Transport log updated successfully","data":{"id":1,"client":{"id":1,"name":"Evidence Client Upd","identityId":"ID-EV-001"},"driver":{"id":1,"name":"Evidence Driver Upd","plateNumber":"EV-1234-A"},"loadDate":"2026-11-01","loadLocation":"Casablanca","unloadDate":"2026-11-02","unloadLocation":"Marrakech","destinationName":"Warehouse A","deliveryNote":"updated","advance":100,"fuelQuantity":50,"fuelPricePerLiter":11.5,"variableCharge":20,"chargePrice":30,"clientTariff":1500,"tripPrice":1200,"operator":"op1","commercial":"com1"}}
+
+>>> GET /api/v1/trans_logs?page=0&size=5   [Authorization: Bearer <redacted>]
+<<< HTTP 200  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"success":true,"message":"Transport logs retrieved successfully","data":{"data":[{"id":1,"client":{"id":1,"name":"Evidence Client Upd","identityId":"ID-EV-001"},"driver":{"id":1,"name":"Evidence Driver Upd","plateNumber":"EV-1234-A"},"loadDate":"2026-11-01","loadLocation":"Casablanca","unloadDate":"2026-11-02","unloadLocation":"Marrakech","destinationName":"Warehouse A","deliveryNote":"updated","advance":100.00,"fuelQuantity":50.00,"fuelPricePerLiter":11.50,"variableCharge":20.00,"chargePrice":30.00,"clientTariff":1500.00,"tripPrice":1200.00,"operator":"op1","commercial":"com1"}],"page":0,"size":5,"totalElements":1,"totalPages":1,"last":true}}
+
+##### Validation error (400): client with blank name and oversize identityId
+>>> POST /api/v1/clients   [Authorization: Bearer <redacted>]
+>>> body: {"name": "", "identityId": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"}
+<<< HTTP 400  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"status":400,"error":"Bad Request","message":"Validation failed: [identityId: size must be between 0 and 20] [name: must not be blank] ","path":"/api/v1/clients","timestamp":"2026-11-06T00:00:05.601926977Z"}
+
+##### Validation error (400): transport log with missing required fields
+>>> POST /api/v1/trans_logs   [Authorization: Bearer <redacted>]
+>>> body: {"clientId": 1}
+<<< HTTP 400  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"status":400,"error":"Bad Request","message":"Validation failed: [operator: must not be blank] [tripPrice: must not be null] [destinationName: must not be blank] [chargePrice: must not be null] [driverId: must not be null] [commercial: must not be blank] [loadLocation: must not be blank] [clientTariff: must not be null] [variableCharge: must not be null] [advance: must not be null] [unloadDate: must not be null] [fuelQuantity: must not be null] [unloadLocation: must not be blank] [fuelPricePerLiter: must not be null] [loadDate: must not be null] ","path":"/api/v1/trans_logs","timestamp":"2026-11-06T00:00:05.623749871Z"}
+
+##### Not found (404)
+>>> GET /api/v1/clients/99999999   [Authorization: Bearer <redacted>]
+<<< HTTP 404  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"status":404,"error":"Not Found","message":"Client not found !","path":"/api/v1/clients/99999999","timestamp":"2026-11-06T00:00:05.639760723Z"}
+
+>>> GET /api/v1/trans_logs/99999999   [Authorization: Bearer <redacted>]
+<<< HTTP 404  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"status":404,"error":"Not Found","message":"Transport log not found !","path":"/api/v1/trans_logs/99999999","timestamp":"2026-11-06T00:00:05.658475435Z"}
+
+>>> DELETE /api/v1/drivers/99999999   [Authorization: Bearer <redacted>]
+<<< HTTP 404  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"status":404,"error":"Not Found","message":"Driver not found !","path":"/api/v1/drivers/99999999","timestamp":"2026-11-06T00:00:05.679345244Z"}
+
+##### Delete round-trip
+>>> DELETE /api/v1/trans_logs/1   [Authorization: Bearer <redacted>]
+<<< HTTP 200  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"success":true,"message":"Transport log deleted successfully","data":null}
+
+>>> GET /api/v1/trans_logs/1   [Authorization: Bearer <redacted>]
+<<< HTTP 404  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"status":404,"error":"Not Found","message":"Transport log not found !","path":"/api/v1/trans_logs/1","timestamp":"2026-11-06T00:00:05.738572054Z"}
+
+>>> DELETE /api/v1/drivers/1   [Authorization: Bearer <redacted>]
+<<< HTTP 200  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"success":true,"message":"Driver deleted successfully","data":null}
+
+>>> DELETE /api/v1/clients/1   [Authorization: Bearer <redacted>]
+<<< HTTP 200  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"success":true,"message":"Client deleted successfully","data":null}
+
+>>> GET /api/v1/clients/1   [Authorization: Bearer <redacted>]
+<<< HTTP 404  {'Vary': 'Origin', 'Content-Type': 'application/json'}
+<<< {"status":404,"error":"Not Found","message":"Client not found !","path":"/api/v1/clients/1","timestamp":"2026-11-06T00:00:06.424603809Z"}
+
+##### Malformed JSON / bad token
+>>> POST /api/v1/clients
+<<< HTTP 401  {'Vary': 'Origin', 'Content-Type': 'application/json;charset=ISO-8859-1'}
+<<< {"status":401,"error":"Unauthorized","message":"Authentication is required to access this resource.","path":"/api/v1/clients","timestamp":"2026-11-06T00:00:06.436642344Z"}
+
+##### CORS preflight (OPTIONS /api/v1/clients)
+>>> OPTIONS /api/v1/clients Origin: http://localhost:3000
+HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+Access-Control-Allow-Origin: http://localhost:3000
+Access-Control-Allow-Methods: GET,POST,PUT,DELETE,OPTIONS,HEAD
+Access-Control-Allow-Headers: authorization
+Access-Control-Expose-Headers: Authorization
+Access-Control-Allow-Credentials: true
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+
+>>> OPTIONS /api/v1/clients Origin: http://evil.example.com
+HTTP/1.1 403 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Transfer-Encoding: chunked
+Date: Fri, 06 Nov 2026 00:00:06 GMT
+
+Invalid CORS request

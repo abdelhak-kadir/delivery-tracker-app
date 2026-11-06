@@ -26,6 +26,7 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+          cache: maven
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -70,16 +71,19 @@ jobs:
 
       - name: Upload SARIF report
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        # Skip (instead of failing again) when the scan step did not produce the file.
+        if: always() && hashFiles('reports/dependency-check-report.sarif') != ''
         with:
           sarif_file: reports/dependency-check-report.sarif
 
       # ------------------ SAST ------------------
+      # The returntocorp/semgrep-action wrapper pins Semgrep 1.36, which crashes on
+      # current rules (ValueError: invalid rule severity) without failing the step.
+      # Run a pinned Semgrep CLI instead: findings or errors now fail the job.
       - name: Run Semgrep (SAST)
-        uses: returntocorp/semgrep-action@v1
-        with:
-          publishToken: ${{ secrets.SEMGREP_TOKEN }}
-          config: 'p/ci'
+        run: |
+          python3 -m pip install --quiet semgrep==1.171.0
+          semgrep scan --config p/ci --error --metrics=off back/src
 
       # Install Trivy
       - name: Install Trivy
@@ -87,16 +91,29 @@ jobs:
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
           sudo mv ./bin/trivy /usr/local/bin/
 
-      # Filesystem scan
-      - name: Trivy FS Scan
-        run: trivy fs --exit-code 1 --severity HIGH,CRITICAL --format sarif -o trivy-fs.sarif . || true
+      # Trivy resolves pom.xml dependencies from ~/.m2 first and only falls back to
+      # Maven Central, which rate-limits CI runners (HTTP 429). Fill ~/.m2 up front.
+      - name: Resolve Maven dependencies for Trivy
+        working-directory: back
+        run: ./mvnw -B -q dependency:go-offline
+
+      # Filesystem scan. --offline-scan: never query Maven Central for pom.xml parents
+      # (it rate-limits runners with HTTP 429); poms come from ~/.m2 filled above.
+      # The backend's full Java dependency tree is checked by the image gate below,
+      # which scans the built jar.
+      - name: Trivy FS Scan (SARIF report)
+        run: trivy fs --offline-scan --exit-code 0 --severity HIGH,CRITICAL --format sarif -o trivy-fs.sarif .
 
       - name: Upload FS SARIF
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        # Skip (instead of failing again) when the scan step did not produce the file.
+        if: always() && hashFiles('trivy-fs.sarif') != ''
         with:
           sarif_file: trivy-fs.sarif
           category: trivy-fs
+
+      - name: Trivy FS Gate (fail on CRITICAL)
+        run: trivy fs --offline-scan --exit-code 1 --severity CRITICAL --ignore-unfixed .
 
       # Docker login (separated from scanning)
       - name: Log in to GitHub Container Registry
@@ -116,7 +133,8 @@ jobs:
 
       - name: Upload Docker Image SARIF
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        # Skip (instead of failing again) when the scan step did not produce the file.
+        if: always() && hashFiles('trivy-image.sarif') != ''
         with:
           sarif_file: trivy-image.sarif
           category: trivy-image

@@ -1,0 +1,108 @@
+%========================================================================================
+%   Chapter 8 --- Challenges and Solutions
+%========================================================================================
+\chapter{Challenges and Solutions}
+\label{chap:challenges}
+
+This chapter records the difficulties we actually met while building the system and how we resolved them. Two kinds of problems are distinguished. The first group appeared during development and is visible in the commit history (for example the many consecutive commits on CI workflows, drift detection and SSH access). The second group was found at the end of the internship, when we reviewed the implementation against the requirements of Chapter~\ref{chap:requirements} and the design of Chapter~\ref{chap:design}; these are defects that existed in our own code and configuration, and we present them as such. Each challenge is described by its problem, its cause, the solution and the outcome. No before-and-after performance figures are given here; measured values are reported in Chapter~\ref{chap:results}.
+
+%------------------------------------------------
+\section{Challenges Met During Development}
+
+\subsection{Circular Dependency in the Security Configuration}
+\textbf{Problem.} After JWT authentication was added (July 2025), the application context failed to start because the beans building the authentication manager and the bean loading user details depended on each other.\par
+\textbf{Cause.} The user-details logic was written inside the security configuration class, which also needed the authentication provider built from it.\par
+\textbf{Solution.} We extracted the loading of the single application user into a separate component, \texttt{SimpleUserDetailsService}, which reads the credentials from environment variables and exposes them as a BCrypt-hashed user. The security configuration now only injects this component.\par
+\textbf{Outcome.} The context starts normally and the authentication tests pass. The price of the simplification is the limitation discussed in Chapter~\ref{chap:discussion}: there is exactly one account.
+
+\subsection{Start-up Order of the Containers}
+\textbf{Problem.} With Docker Compose, the backend container could start before PostgreSQL accepted connections and then failed at start-up.\par
+\textbf{Cause.} A plain \texttt{depends\_on} only waits for the database container to be started, not for the database to be ready.\par
+\textbf{Solution.} The database service declares a \texttt{pg\_isready} health check, and the backend uses \texttt{depends\_on} with \texttt{condition: service\_healthy} in the Compose files under \texttt{docker/}.\par
+\textbf{Outcome.} In the local run described in Chapter~\ref{chap:results}, the stack reaches a healthy state after \texttt{docker compose up -d} without manual restarts.
+
+\subsection{Environment Configuration and Secrets}
+\textbf{Problem.} The backend needs a database URL, a JWT secret and the credentials of the application user, and these differ between local, staging and production. Early on, an example JWT secret was committed in the repository.\par
+\textbf{Cause.} Configuration was first treated as a convenience file rather than as a security-relevant input.\par
+\textbf{Solution.} Spring reads every secret from environment variables, with two configuration files only (\texttt{local} and \texttt{docker}). On the servers, Ansible renders the environment from a template using variables stored in an Ansible Vault file per environment, and the vault password file is excluded from version control.\par
+\textbf{Outcome.} No secret is needed in the source tree for the current code. The Gitleaks scan nevertheless still reports the example key committed in 2025 in \texttt{.env.example}, which should be replaced by a placeholder (Chapter~\ref{chap:results}).
+
+\subsection{Test Isolation}
+\textbf{Problem.} The integration tests must exercise the controllers and the security chain without a PostgreSQL instance and without the real credentials.\par
+\textbf{Cause.} The production security configuration depends on environment variables and on a real database.\par
+\textbf{Solution.} Tests use an in-memory H2 database and a dedicated \texttt{TestSecurityConfig} in the test source tree.\par
+\textbf{Outcome.} The 82 backend tests run in the build without external services.
+
+\subsection{Terraform State and Drift Detection}
+\textbf{Problem.} Terraform state kept on a developer machine cannot be shared with the CI pipeline, and parallel runs could corrupt it. In addition we wanted to know when the real infrastructure no longer matched the code.\par
+\textbf{Cause.} The default local backend has neither locking nor shared access.\par
+\textbf{Solution.} The state is stored in a Terraform Cloud workspace through the \texttt{remote} backend. A scheduled job of \texttt{terraform.yaml} runs a plan and, if the exit code signals a difference, opens a GitHub issue from a template. Several consecutive commits on 26 September 2025 were needed to get the template and the scheduling right.\par
+\textbf{Outcome.} The mechanism exists and has been reviewed, but the Terraform workflow never completed successfully on the remote repository during the observed period (Chapter~\ref{chap:results}). Drift detection is therefore implemented but not demonstrated.
+
+\subsection{SSH Access Through the Bastion}
+\textbf{Problem.} Only the bastion host is reachable from the Internet, yet Ansible must configure the frontend and backend servers. Connection failures were frequent and account for a series of commits in September 2025.\par
+\textbf{Cause.} Combining a jump host, agent forwarding, strict host-key checking and a root login that the hardening role later disables made the first versions of the inventory fragile.\par
+\textbf{Solution.} The inventory is generated from the Terraform outputs by \texttt{generate\_inventory.py}, which adds \texttt{ProxyJump} through the bastion and enables agent forwarding in \texttt{ansible.cfg}. A dedicated playbook, \texttt{migrate-to-ansible-user.yml}, creates the non-root \texttt{ansible} service account while root is still reachable, so that the SSH hardening role can then forbid root login. We also added connectivity diagnostics to the scripts.\par
+\textbf{Outcome.} The design is consistent and the playbooks pass the Ansible syntax check. We did not run them against real servers in the final revision, so this challenge is solved on paper and in earlier trials only.
+
+%------------------------------------------------
+\section{Issues Found by Reviewing the Implementation Against the Requirements}
+
+During the last days we compared what the repository did with what the report claimed and what the requirements demanded. The review found the following defects, all of which we corrected in the final revision. We list them because they show the gap between a pipeline that appears to work and one that actually enforces its policy.
+
+\subsection{Application Security}
+\begin{description}
+  \item[Public client data.] \textbf{Problem:} \texttt{GET /api/v1/clients/**} was declared \texttt{permitAll}, so client records could be read without authentication. \textbf{Cause:} a rule added to ease frontend development had never been removed. \textbf{Solution:} the rule was removed and the JWT filter now covers the whole API. \textbf{Outcome:} an unauthenticated request now returns 401 (Chapter~\ref{chap:results}).
+  \item[403 instead of 401.] \textbf{Problem:} unauthenticated requests received a 403 without a body. \textbf{Cause:} no authentication entry point was configured. \textbf{Solution:} we added JSON entry points for 401 and 403 returning the common error structure. \textbf{Outcome:} the three 401 scenarios (no token, wrong password, invalid token) behave as designed.
+  \item[Lost client updates and 500 on delete.] \textbf{Problem:} updating a client could silently create or overwrite data, and deleting a missing client produced a server error. \textbf{Cause:} the service did not check existence before acting. \textbf{Solution:} both operations now raise the not-found exception, mapped to 404, and tests were added. \textbf{Outcome:} the CRUD checks return 404 after deletion.
+  \item[Hard-coded API URL and CORS origins.] \textbf{Problem:} the frontend called a fixed URL and the allowed origins were fixed in code. \textbf{Cause:} values valid on one developer machine were embedded. \textbf{Solution:} both are now taken from configuration. \textbf{Outcome:} the preflight check accepts the configured origin and rejects an unknown one.
+  \item[Backend container running as root.] \textbf{Problem:} the backend image ran its process as root. \textbf{Cause:} the Dockerfile had no \texttt{USER} instruction. \textbf{Solution:} a dedicated user was added. \textbf{Outcome:} the backend runs as an unprivileged user and the frontend as \texttt{nginx} (Chapter~\ref{chap:results}).
+\end{description}
+
+\subsection{Pipeline and Infrastructure Code}
+\begin{description}
+  \item[Gates that never failed.] \textbf{Problem:} the Trivy scan and \texttt{npm audit} ended with \texttt{|| true}, so they reported findings but could not block a build. \textbf{Cause:} the suffix was added in August 2025 to get SARIF uploads working and was never revisited. \textbf{Solution:} the Trivy scan now fails on critical findings; \texttt{npm audit} remains report-only because the 70 findings come mostly from build-time dependencies, and we state this in Chapter~\ref{chap:discussion}.
+  \item[CD trigger name mismatch.] \textbf{Problem:} the backend CD workflow waited for a workflow name that no longer existed, so it could not be triggered by CI. \textbf{Solution:} the name was aligned with the CI workflow.
+  \item[Scheduled Terraform run could apply.] \textbf{Problem:} the scheduled trigger ran the same jobs as a push, including apply. \textbf{Solution:} plan and apply are skipped for the \texttt{schedule} event, and apply is limited to pushes on the main branch or manual dispatch.
+  \item[Rego rules that could not match.] \textbf{Problem:} the Conftest policies were written in a syntax and with paths that never matched a plan, and the OPA workflow pointed to a non-existent \texttt{terraform} directory. \textbf{Solution:} the rules were rewritten with \texttt{rego.v1}, checked with Conftest on synthetic plans, and the workflow path now targets \texttt{infra/}.
+  \item[Unused Ansible roles and variable mismatch.] \textbf{Problem:} several roles were not referenced by any playbook, and the backend environment template used variable names different from those the application reads. \textbf{Solution:} all roles are wired into the playbooks and the template was aligned with the Spring configuration. Vault variables for the application user and the production JWT secret still have to be created by the operators.
+\end{description}
+
+%------------------------------------------------
+\section{Update: Scan Findings After the Measurements}
+
+The numbers of Chapter~\ref{chap:results} were measured on Spring Boot 3.5.6 and are kept as measured. Since then, the Trivy gate on the container image reported HIGH and CRITICAL findings in the backend libraries, and we reacted in three ways. The backend was upgraded to Spring Boot 3.5.16, together with Jackson 2.21.7, Tomcat 10.1.59 and the PostgreSQL driver 42.7.12, which cleared the findings that had a fix in that line. Two CVEs in \texttt{spring-webmvc} are fixed only in Spring Framework 7, which requires a migration to Spring Boot 4; we recorded them in the \texttt{.trivyignore} file with an expiry date of 6 February 2027, after which Trivy reports them again, because the application renders no XSLT views and has no server-sent-events endpoint, so the vulnerable code paths are not reachable. This is a time-boxed acceptance of a risk, not a fix. On the frontend, the transitive packages \texttt{proxy-addr}, \texttt{shell-quote} and \texttt{websocket-driver} were pinned to patched versions through npm \texttt{overrides}. Finally, the OPA policies now have 11 unit tests (\texttt{infra/policy/security\_test.rego}) that run on sample plans without any credential; the check against a real Terraform plan is skipped until a \texttt{TF\_API\_TOKEN} secret is configured, so it is not yet exercised on the remote repository. While capturing the pipeline logs for this report we also found that the Semgrep step had never really run in CI: the \texttt{semgrep-action} wrapper pinned Semgrep 1.36, which crashed on the current rule set while the step still reported success. Both security workflows now run a pinned Semgrep CLI (1.171.0) with \texttt{--error}, and the first run reported 45 rules on 46 files with no finding (Figure~\ref{fig:ghactions-sec}). This is another instance of a gate that could not fail.
+
+%------------------------------------------------
+\section{Summary}
+
+Table~\ref{tab:challenges-summary} lists the challenges with their origin and the evidence on which they rest.
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.6cm} >{\raggedright\arraybackslash}p{2.6cm} X@{}}
+\toprule
+\textbf{Challenge} & \textbf{Origin} & \textbf{Evidence} \\
+\midrule
+Circular security beans & Development & \texttt{SimpleUserDetailsService}, authentication tests \\
+Container start order & Development & Health check and \texttt{depends\_on} in \texttt{docker/*.yaml} \\
+Secrets and configuration & Development & Environment variables, Ansible Vault per environment \\
+Test isolation & Development & H2 and \texttt{TestSecurityConfig}; 82 tests \\
+Terraform state and drift & Development & Remote backend, drift job; workflow never succeeded remotely \\
+Bastion SSH and user migration & Development & Generated inventory, migration playbook, many commits; syntax check only \\
+Public client endpoint, 401/403 & Final review & Security configuration, HTTP checks \\
+Client update/delete defects & Final review & Service code, tests \\
+Hard-coded URL and CORS & Final review & Configuration, preflight check \\
+Root container & Final review & Dockerfile, user id in container inspection \\
+Non-blocking scan gates & Final review & Workflow files \\
+Workflow triggers and Rego rules & Final review & \texttt{terraform.yaml}, \texttt{ci-back.yaml}, \texttt{infra/policy} \\
+Unused roles, variable mismatch & Final review & Playbooks, backend template \\
+\bottomrule
+\end{tabularx}
+\caption{Challenges, origin and evidence}
+\label{tab:challenges-summary}
+\end{table}
+
+Two lessons recur. Security controls must be tested by trying to violate them: a gate that cannot fail and a policy that cannot match are both invisible until someone looks. And configuration shared between several tools (Terraform outputs, Ansible variables, Spring properties) breaks at the seams, which is where we spent most of the debugging time.

@@ -1,0 +1,48 @@
+\begin{figure}[H]
+\centering
+\begin{adjustbox}{max width=\linewidth}
+\begin{tikzpicture}[>=latex, thick,
+  part/.style={rectangle, draw=Eblue, fill=Ecyan!15, minimum width=2.9cm, minimum height=1.0cm, font=\scriptsize\bfseries, align=center, text width=2.8cm},
+  life/.style={dashed, Egray},
+  m/.style={-{Latex}, Eblue},
+  r/.style={-{Latex}, dashed, Egray},
+  t/.style={font=\scriptsize, above, align=center, inner sep=1.5pt, fill=white},
+  note/.style={rectangle, draw=Eorange, fill=Eorange!10, font=\scriptsize, align=left, inner sep=3pt}]
+\def\selfmsg#1#2#3{\draw[m] (#1,#2) -- ++(0.8,0) -- ++(0,-0.5) -- ++(-0.8,0);
+  \node[anchor=west, font=\scriptsize, align=left, fill=white, inner sep=1pt] at ($(#1,#2)+(0.9,-0.25)$) {#3};}
+
+\node[part] (spa) at (0,0) {React SPA\\(Axios)};
+\node[part] (flt) at (3.4,0) {JwtAuthentication\\Filter};
+\node[part] (ctl) at (6.8,0) {AuthController};
+\node[part] (mgr) at (10.2,0) {Authentication\\Manager};
+\node[part] (uds) at (13.6,0) {SimpleUser\\DetailsService};
+\node[part] (jwt) at (17.0,0) {JwtToken\\Provider};
+\foreach \x in {0,3.4,6.8,10.2,13.6,17.0}{\draw[life] (\x,-0.45) -- (\x,-18.2);}
+
+% ---- Phase 1: login ----
+\draw[m] (0,-1.5) -- node[t]{POST /api/v1/auth/login\\\{username, password\}} (6.8,-1.5);
+\node[note, anchor=west] at (3.55,-2.2) {filter bypassed for /api/v1/auth/**};
+\draw[m] (6.8,-3.4) -- node[t]{authenticate(username, password)} (10.2,-3.4);
+\draw[m] (10.2,-4.2) -- node[t]{loadUserByUsername(username)} (13.6,-4.2);
+\draw[r] (13.6,-5.2) -- node[t]{UserDetails (BCrypt hash,\\ROLE\_ADMIN)} (10.2,-5.2);
+\selfmsg{10.2}{-5.9}{BCrypt matches()}
+\draw[r] (10.2,-7.0) -- node[t]{Authentication} (6.8,-7.0);
+\node[note, anchor=west] at (10.4,-7.9) {Invalid credentials: BadCredentialsException,\\HTTP 401 via GlobalExceptionHandler};
+\draw[m] (6.8,-8.9) -- node[t]{generateToken(authentication)} (17.0,-8.9);
+\draw[r] (17.0,-9.9) -- node[t]{JWT: sub, roles, iat, exp = iat + 30 min} (6.8,-9.9);
+\draw[r] (6.8,-10.9) -- node[t]{200 OK \{token, username, expiresAt\}} (0,-10.9);
+\selfmsg{0}{-11.4}{localStorage: authToken, username}
+
+% ---- Phase 2: authenticated request ----
+\draw[Egray, dotted] (-1.4,-12.6) -- (18.4,-12.6);
+\node[font=\scriptsize\itshape, anchor=south west] at (0.15,-12.6) {Later request};
+\draw[m] (0,-13.6) -- node[t]{GET /api/v1/clients\\Authorization: Bearer <jwt>} (3.4,-13.6);
+\draw[m] (3.4,-14.2) -- node[t, pos=0.5]{validateToken(jwt), getUsernameFromToken(jwt)} (17.0,-14.2);
+\draw[m] (3.4,-15.2) -- node[t]{loadUserByUsername(username)} (13.6,-15.2);
+\selfmsg{3.4}{-16.0}{SecurityContext set, request\\proceeds to the controller}
+\draw[r] (3.4,-17.5) -- node[t]{response, or HTTP 401\\(JSON error) if the token is\\missing, invalid or expired} (0,-17.5);
+\end{tikzpicture}
+\end{adjustbox}
+\caption{Authentication sequence: login against the single configured user and JWT issuance (top), then use of the token on a later request (bottom)}
+\label{fig:jwt-sequence}
+\end{figure}

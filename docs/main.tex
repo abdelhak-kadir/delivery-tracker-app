@@ -1,0 +1,31 @@
+\documentclass[a4paper,11pt,openany]{report}
+
+% All packages, colours and macros live in preamble.tex
+\input{preamble}
+
+\begin{document}
+\input{chapters/titlepage}
+
+% ---------------- Front matter (roman numbering, TOC, lists, acronyms) ----------------
+\input{chapters/00-frontmatter}
+
+% ---------------- Main matter ----------------
+\input{chapters/00-general-introduction}
+\input{chapters/01-introduction}
+\input{chapters/02-background}
+\input{chapters/03-specification}
+\input{chapters/04-design-methodology}
+\input{chapters/05-implementation}   % merged old 05 + 06 (Wave 2, WP5)
+\input{chapters/07-results-evaluation}
+\input{chapters/08-challenges-solutions}
+\input{chapters/09-discussion}
+\input{chapters/10-conclusion-futurework}
+
+% ---------------- Bibliography ----------------
+\input{chapters/11-references}
+
+% ---------------- Appendices ----------------
+\appendix
+\input{chapters/12-appendices}
+
+\end{document}

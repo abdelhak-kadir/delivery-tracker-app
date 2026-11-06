@@ -1,0 +1,28 @@
+\begin{figure}[H]
+\centering
+\begin{adjustbox}{max width=\linewidth}
+\begin{tikzpicture}[>=latex, thick, node distance=1.4cm,
+  comp/.style={rectangle, draw=Eblue, rounded corners=6pt, fill=Ecyan!15, minimum width=3.2cm, minimum height=1.5cm, font=\footnotesize, align=center},
+  host/.style={rectangle, draw=Egray, dashed, rounded corners=8pt, inner sep=0.35cm},
+  lbl/.style={font=\scriptsize, text=Egray, align=center}]
+
+\node[comp, fill=white] (browser) {Web browser\\{\scriptsize React SPA,}\\{\scriptsize JWT in localStorage}};
+\node[comp, right=2.5cm of browser] (nginx) {Nginx container\\{\scriptsize static build + reverse proxy}};
+\node[comp, right=2.6cm of nginx] (api) {Spring Boot container\\{\scriptsize REST API, port 8080}};
+\node[comp, fill=Eorange!15, draw=Eorange, right=2.5cm of api] (db) {PostgreSQL\\{\scriptsize managed cluster}};
+
+\node[host, fit=(nginx), label={[font=\scriptsize]above:frontend droplet}] {};
+\node[host, fit=(api), label={[font=\scriptsize]above:backend droplet}] {};
+
+\draw[<->, Eblue] (browser) -- node[lbl, above]{HTTP(S)} (nginx);
+\draw[<->, Eblue] (nginx) -- node[lbl, above]{\texttt{/api/}\\proxied} (api);
+\draw[<->, Eblue] (api) -- node[lbl, above]{JDBC /\\JPA} (db);
+
+\node[comp, fill=white, below=2.2cm of nginx, xshift=2.9cm] (bast) {Bastion droplet\\{\scriptsize SSH jump host}};
+\draw[->, Egray, dashed] (bast) -- node[lbl, left, pos=0.5]{SSH} (nginx.south);
+\draw[->, Egray, dashed] (bast) -- node[lbl, right, pos=0.5]{SSH} (api.south);
+\end{tikzpicture}
+\end{adjustbox}
+\caption{Runtime architecture of one environment: a static React build served by Nginx, a stateless Spring Boot API and a managed PostgreSQL cluster}
+\label{fig:system-architecture}
+\end{figure}

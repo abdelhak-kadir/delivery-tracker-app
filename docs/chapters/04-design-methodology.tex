@@ -1,0 +1,432 @@
+%========================================================================================
+%   Chapter 4 -- Design
+%========================================================================================
+
+\chapter{System Design}\label{chap:design}
+
+This chapter describes how the requirements of Chapter~\ref{chap:requirements} are met. We present the architecture of the application, its data model, the REST API, the behavior of the two key scenarios, the security design, the design of the infrastructure and of the configuration management, and finally the design of the delivery pipeline and of the test strategy. The chapter explains \emph{what was decided and why}; the code, the commands and the observed results are given in the implementation and results chapters.
+
+%------------------------------------------------
+\section{Design Principles}
+
+Five principles guided the design.
+
+\begin{itemize}
+    \item \textbf{Separation of concerns.} The backend is organized in layers with a single responsibility each, and the frontend is a separate application that communicates with it only through the REST API.
+    \item \textbf{Stateless services.} The backend keeps no session; the identity of the caller is carried by a signed token in each request, which allows several instances to be run behind the same frontend if needed.
+    \item \textbf{Secure by default.} Every endpoint requires authentication unless it is explicitly listed as public; secrets are never part of the source code.
+    \item \textbf{Infrastructure as code.} Servers, networks, firewalls, databases and DNS records are described in versioned files, and each environment is an instance of the same module.
+    \item \textbf{Automate the checks.} Tests, secret detection, dependency and image scanning, and infrastructure policy checks are executed by workflows rather than by hand.
+\end{itemize}
+
+%------------------------------------------------
+\section{Application Architecture}
+
+\subsection{Runtime Architecture}
+
+Figure~\ref{fig:system-architecture} shows one environment at runtime. The browser downloads the React single-page application from an Nginx container on the frontend server. Nginx also acts as a reverse proxy for the \texttt{/api/} prefix, which it forwards to the Spring Boot container on the backend server. The backend reads and writes a PostgreSQL database that is a managed cluster in the cloud environments and a container in local runs. A separate bastion server is the only machine that accepts administrative SSH connections from the Internet. The network placement of these machines is detailed in Section~\ref{sec:infra}.
+
+\input{figures/fig4-1}
+
+The system is thus a classical three-tier architecture (presentation, application, data) in which the presentation tier is a static application executed in the browser. The two Spring profiles of the backend, \texttt{local} and \texttt{docker}, differ only in how the database connection is obtained; the separation between staging and production is made at the infrastructure level (separate Terraform module instances and Ansible group variables), not by application profiles.
+
+\subsection{Layered Organization of the Backend}
+
+The backend follows a layered architecture, shown in Figure~\ref{fig:backend-layers}. It is a conventional controller--service--repository design and should not be confused with the more constrained ``clean'' or hexagonal architectures: entities are JPA classes, and the service layer depends directly on Spring Data repositories.
+
+\input{figures/fig4-8}
+
+Table~\ref{tab:layers} states the responsibility of each package.
+
+\begin{table}[H]
+\centering
+\caption{Responsibilities of the backend packages}
+\label{tab:layers}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Package} & \textbf{Responsibility} \\
+\midrule
+\texttt{config} & Security filter chain, JWT filter and token provider, CORS policy, OpenAPI metadata. \\
+\texttt{controller.v1} & HTTP mapping, input validation (\texttt{@Valid}), status codes and response envelope; no business logic. \\
+\texttt{service}, \texttt{service.serviceimpl} & Use-case logic and transaction boundaries (\texttt{@Transactional}); resolves the client and driver referenced by a transport log. \\
+\texttt{repository} & Persistence through Spring Data JPA interfaces. \\
+\texttt{entity} & JPA entities mapped to database tables. \\
+\texttt{dto.v1} & Immutable request and response records, decoupling the API contract from the entities; generic \texttt{BaseResponse} and \texttt{PagedResponse} wrappers. \\
+\texttt{mapper} & Hand-written Spring components converting between DTOs and entities (no mapping framework is used). \\
+\texttt{exception} & \texttt{GlobalExceptionHandler} translating validation errors, missing resources and authentication failures into a uniform \texttt{ErrorResponse}. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Frontend Structure}
+
+The frontend is a React 19 single-page application built with Create React App and styled with MUI. Routing is handled by React Router: a public \texttt{/login} route and a protected area, wrapped by a \texttt{ProtectedRoute} component, containing the pages \texttt{/dashboard}, \texttt{/clients}, \texttt{/drivers} and \texttt{/transport-logs} inside a common layout. An \texttt{AuthContext} holds the authentication state (flag, username, loading state) and exposes \texttt{login} and \texttt{logout}. A single Axios instance (\texttt{services/api.js}) groups the calls by resource (\texttt{authAPI}, \texttt{clientsAPI}, \texttt{driversAPI}, \texttt{transportLogsAPI}); a request interceptor adds the \texttt{Authorization: Bearer} header from the stored token, and a response interceptor maps HTTP errors to user-facing messages and clears the stored token on a 401 response.
+
+%------------------------------------------------
+\section{Data Design}
+
+The persistent model contains three entities, shown in Figure~\ref{fig:db-schema}. \texttt{Client} (name, identity number) and \texttt{Driver} (name, plate number) are independent. \texttt{TransportLog} holds the business data of a trip and refers to exactly one client and one driver through two \texttt{@ManyToOne} associations; the relation is therefore one-to-many from a client (or a driver) to its transport logs, and it is navigable from the transport log only. Identifiers are \texttt{Long} values generated by the database (\texttt{IDENTITY}), monetary and quantity fields are \texttt{BigDecimal} to avoid floating-point rounding, and dates are \texttt{LocalDate}.
+
+\input{figures/fig4-2}
+
+Two design remarks are worth stating. First, the schema is generated by Hibernate (\texttt{ddl-auto: update}, set in the local profile and passed by the Compose files); no migration tool such as Flyway or Liquibase is used, which is acceptable for a one-month prototype but would have to change before the schema evolves in production. Second, no uniqueness constraint is declared on the identity number or the plate number, and no cascade rule is defined: deleting a client or driver that is still referenced by a transport log is therefore left to the database foreign-key behavior.
+
+Input validation is declared on the DTO records rather than on the entities. Clients require a non-blank name (at most 100 characters) and identity number (at most 20); drivers require a non-blank name and plate number (at most 20 each); a transport log requires its two identifiers, the load and unload dates and places, the destination, all monetary fields, the operator and the commercial, while the delivery note is optional.
+
+%------------------------------------------------
+\section{REST API Design}
+
+\subsection{Conventions}
+
+The API is versioned in the path (\texttt{/api/v1}) and organized by resource. Successful responses are wrapped in a \texttt{BaseResponse} envelope (\texttt{success}, \texttt{message}, \texttt{data}); list endpoints return a \texttt{PagedResponse} (\texttt{data}, \texttt{page}, \texttt{size}, \texttt{totalElements}, \texttt{totalPages}, \texttt{last}). Errors use an \texttt{ErrorResponse} with the HTTP status, a reason, a message, the request path and a timestamp. Pagination is driven by the query parameters \texttt{page} (default 0) and \texttt{size} (default 10; at most 100 for clients and drivers and at most 30 for transport logs). Updates are \texttt{PUT} requests on the collection whose body contains the identifier, rather than on the item path. Creation answers \texttt{201 Created} with a \texttt{Location} header. The contract is published as an OpenAPI description (springdoc) and a Swagger UI, which declares a Bearer JWT security scheme.
+
+\subsection{Endpoint Catalog}
+
+Table~\ref{tab:api} lists the endpoints exposed by the three business controllers and the authentication controller, together with the technical endpoints that are public.
+
+\begin{table}[H]
+\centering
+\caption{REST API endpoints (prefix \texttt{/api/v1} for the business resources)}
+\label{tab:api}
+\renewcommand{\arraystretch}{1.15}
+\small
+\begin{tabularx}{\linewidth}{@{}l l >{\raggedright\arraybackslash}X l@{}}
+\toprule
+\textbf{Method} & \textbf{Path} & \textbf{Purpose} & \textbf{Access} \\
+\midrule
+POST & \texttt{/api/v1/auth/login} & Authenticate; returns token, username and expiry & Public \\
+\addlinespace
+POST & \texttt{/api/v1/clients} & Create a client & JWT \\
+GET & \texttt{/api/v1/clients?page\&size} & List clients (paginated) & JWT \\
+GET & \texttt{/api/v1/clients/\{id\}} & Get one client & JWT \\
+PUT & \texttt{/api/v1/clients} & Update a client (id in body) & JWT \\
+DELETE & \texttt{/api/v1/clients/\{id\}} & Delete a client & JWT \\
+\addlinespace
+POST & \texttt{/api/v1/drivers} & Create a driver & JWT \\
+GET & \texttt{/api/v1/drivers?page\&size} & List drivers (paginated) & JWT \\
+GET & \texttt{/api/v1/drivers/\{id\}} & Get one driver & JWT \\
+PUT & \texttt{/api/v1/drivers} & Update a driver (id in body) & JWT \\
+DELETE & \texttt{/api/v1/drivers/\{id\}} & Delete a driver & JWT \\
+\addlinespace
+POST & \texttt{/api/v1/trans\_logs} & Create a transport log & JWT \\
+GET & \texttt{/api/v1/trans\_logs?page\&size} & List transport logs (paginated) & JWT \\
+GET & \texttt{/api/v1/trans\_logs/\{id\}} & Get one transport log & JWT \\
+PUT & \texttt{/api/v1/trans\_logs} & Update a transport log (id in body) & JWT \\
+DELETE & \texttt{/api/v1/trans\_logs/\{id\}} & Delete a transport log & JWT \\
+\addlinespace
+GET & \texttt{/swagger-ui/**} & Interactive API documentation & Public \\
+GET & \texttt{/v3/api-docs.yaml} & OpenAPI description & Public \\
+GET & \texttt{/actuator/health} & Health status & Public \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+All endpoints of the three business resources, including the read operations on clients, require authentication: the security configuration declares a short list of public paths and requires authentication for any other request. The Actuator exposure is restricted to the \texttt{health} endpoint by configuration.
+
+\subsection{Error Responses}
+
+Every error, whether it is raised by the application or by the security layer, is returned as the same JSON \texttt{ErrorResponse} (status, error label, message, request path, timestamp), so that a client has a single format to interpret. Table~\ref{tab:errors} lists the status codes of the contract.
+
+\begin{table}[H]
+\centering
+\caption{Error status codes of the API}
+\label{tab:errors}
+\renewcommand{\arraystretch}{1.15}
+\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{4.2cm}@{}}
+\toprule
+\textbf{Status} & \textbf{Situation} & \textbf{Produced by} \\
+\midrule
+400 & Invalid payload (Bean Validation) or invalid query parameter & Global exception handler \\
+401 & Missing, malformed or expired token on a protected endpoint; wrong credentials at login & Authentication entry point; exception handler (login) \\
+403 & Access denied to an authenticated caller & Access-denied handler \\
+404 & Identifier not found on read, update or delete; unknown client or driver referenced by a transport log & Global exception handler \\
+500 & Any other unexpected failure & Global exception handler \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Since the application has a single role, the \texttt{403} case is not expected in normal use; it is defined so that a future restriction by role would already produce a well-formed answer.
+
+%------------------------------------------------
+\section{Behavioral Design}
+
+\subsection{Authentication Sequence}
+
+Figure~\ref{fig:jwt-sequence} shows the login scenario and the use of the token. The SPA posts the credentials to the login endpoint, which the JWT filter lets through. The controller delegates to Spring Security's \texttt{AuthenticationManager}, which asks \texttt{SimpleUserDetailsService} for the user details of the configured account and compares the supplied password with the BCrypt hash computed at startup. On success the controller asks \texttt{JwtTokenProvider} for a token whose subject is the username, with a \texttt{roles} claim and an expiry set 30 minutes after issuance, and returns it with the username and the expiry date. The SPA stores the token and the username in the browser's \texttt{localStorage}. On later requests the Axios interceptor adds the token as a Bearer header; \texttt{JwtAuthenticationFilter} validates the signature and the expiry, reloads the user details and places the authentication in the security context before the request reaches the controller. There is no refresh mechanism: when the token expires the user must log in again.
+
+\input{figures/fig4-3}
+
+\subsection{Creation of a Transport Log}
+
+Figure~\ref{fig:seq-create-log} follows the creation of a transport log through the layers. After the filter has authenticated the caller, the controller validates the payload with Bean Validation; an invalid payload ends the scenario with a \texttt{400} error. The service then loads the referenced client and driver, and raises a \texttt{ResourceNotFoundException} (\texttt{404}) when either does not exist. The mapper assembles the entity from the request and the two loaded objects, the service persists it inside a transaction, and the saved entity is mapped back to a response DTO. The controller answers \texttt{201 Created} with the URI of the new resource. The same two checks (existence of the client and of the driver) are applied by the update operation.
+
+\input{figures/fig4-4}
+
+%------------------------------------------------
+\section{Security Design}
+
+\subsection{Authentication and Authorization Model}
+
+The authentication model is intentionally minimal. The application knows one account, defined by the environment variables \texttt{APP\_USER\_USERNAME} and \texttt{APP\_USER\_PASSWORD}; there is no user table and no registration. At startup the clear password is hashed with BCrypt and the clear value is discarded from memory, so only the hash is used for verification. The account has the role \texttt{ROLE\_ADMIN}, read from the property \texttt{app.user.roles}. Sessions are stateless (\texttt{SessionCreationPolicy.STATELESS}); the signing key is read from \texttt{JWT\_SECRET}; the token lifetime is 1\,800\,000~ms (30 minutes); there is no refresh token.
+
+Regarding authorization, we state the situation precisely. The framework for role-based access control is in place: method security is enabled (\texttt{@EnableMethodSecurity}), roles are loaded from configuration, and they are written into the token's \texttt{roles} claim and into the authorities of the security context. However, with a single account and a single role, the authorization rule effectively reduces to ``authenticated or not'': no endpoint is restricted to a specific role. A multi-user, multi-role model (for instance separating an operator from a read-only auditor) would require a user table, role management and role-specific rules, and is left as future work.
+
+\subsection{Request Protection}
+
+The security filter chain declares as public only the login path (\texttt{/api/v1/auth/**}), the Swagger UI, the OpenAPI description and the health endpoint; every other request must be authenticated. CSRF protection is disabled, which is a deliberate and common choice for a stateless API whose credentials travel in an explicit \texttt{Authorization} header rather than in a cookie. CORS is configured from a list of allowed origins supplied by the environment (\texttt{APP\_CORS\_ALLOWED\_ORIGINS}), whose default is the two local development origins of the React server (port 3000), with credentials allowed; in the deployed configuration the browser reaches the API through the Nginx reverse proxy of the frontend, so requests are same-origin and the setting is a second line of defense. The frontend uses a relative API address, which the Nginx proxy (containers) or the development-server proxy (local development) forwards to the backend. A request without a valid token receives a \texttt{401} response with the JSON error body, and the frontend reacts to it by clearing the session and returning to the login page.
+
+\subsection{Threat Analysis}
+
+Table~\ref{tab:stride} applies the STRIDE categories in a lightweight way: for each threat relevant to this system we list the control that was designed against it and the residual risk that remains.
+
+\begin{table}[H]
+\centering
+\caption{Threat-oriented view of the security design (STRIDE-lite)}
+\label{tab:stride}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{STRIDE} & \textbf{Threat} & \textbf{Control} & \textbf{Residual risk} \\
+\midrule
+Spoofing & Guessing or brute-forcing the login; forging a token. & BCrypt password hash; HMAC-signed JWT whose key is an environment secret; 30-minute expiry. & No rate limiting or lockout on the login endpoint; a weak \texttt{JWT\_SECRET} would weaken the signature. \\
+Tampering & Modifying a token or a payload; injecting data. & Signature verification on every request; Bean Validation on all DTOs; JPA parameter binding instead of string-built queries. & Validation is syntactic only (no business rules such as date ordering). \\
+Repudiation & Denying an action on the data. & Application logs and host logs (log rotation, log-monitoring scripts). & One shared account: actions cannot be attributed to a person; no audit table. \\
+Information disclosure & Reading business data without authorization; leaking secrets. & Authentication required on all business endpoints (uniform \texttt{401} answer for a missing, malformed or expired token); secrets in environment variables, Ansible Vault and GitHub secrets; Gitleaks scan; DTOs expose only intended fields. & Token kept in \texttt{localStorage} is readable by any script running in the page (XSS); the generic error handler returns exception messages. \\
+Denial of service & Flooding the API or the SSH port. & Cloud firewalls expose only 80/443 on the frontend; fail2ban on the bastion; page size capped on list endpoints. & No application-level throttling; single instance per tier. \\
+Elevation of privilege & Reaching internal machines or the database; abusing a container. & SSH only through the bastion, key-only and root login disabled; database reachable from the backend droplet only; frontend image runs as the \texttt{nginx} user and the backend container is configured to run as a non-root user. & Single admin role: any authenticated user holds full privileges. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Secrets and Supply-Chain Controls}
+
+Secrets follow three channels depending on where they are used: GitHub encrypted secrets for the pipelines (registry, Terraform Cloud and scanner tokens), Ansible Vault files per environment for the values rendered on servers, and environment variables for the application itself. Supply-chain risk is addressed in the pipeline by scanning source (Semgrep), dependencies (OWASP Dependency-Check, npm audit), the filesystem and the container images (Trivy) and the repository history (Gitleaks); the gates are described in Section~\ref{sec:pipeline}.
+
+%------------------------------------------------
+\section{Infrastructure Design (Terraform)}
+\label{sec:infra}
+
+\subsection{Environment Model}
+
+Infrastructure is described in Terraform for the DigitalOcean provider (region \texttt{fra1}). The root configuration creates one shared VPC, \texttt{devsecops-vpc}, and instantiates the reusable module \texttt{modules/stack} twice, once as \texttt{staging} and once as \texttt{production}. The two instances differ only by their input variables (droplet sizes); the module guarantees that both environments are structurally identical. State is stored in a Terraform Cloud remote backend (organization \texttt{3assasa}), which provides locking and a central state shared by the team and by the pipeline. Figure~\ref{fig:terraform-vpc-architecture} summarizes the result.
+
+\input{figures/fig4-5}
+
+\subsection{Resources of the Stack Module}
+
+Table~\ref{tab:stack-module} lists what each instance of the module creates.
+
+\begin{table}[H]
+\centering
+\caption{Resources created by one instance of the \texttt{stack} module}
+\label{tab:stack-module}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Resource} & \textbf{Design decision} \\
+\midrule
+Bastion droplet & Single SSH entry point; small size (variable \texttt{bastion\_size}); tagged \texttt{role:bastion-<env>}. \\
+Frontend droplet & Hosts the Nginx container; public ports 80 and 443. \\
+Backend droplet & Hosts the Spring Boot container; no public inbound access. \\
+Cloud-init & A minimal user-data script that only refreshes and upgrades packages; all software installation is left to Ansible. \\
+Firewalls (3) & One per role, attached to the droplet and referring to other roles by tag (see Table~\ref{tab:firewalls}). \\
+Managed PostgreSQL cluster & Engine and version from variables (PostgreSQL 16), single node, in the shared VPC; a database named \texttt{delivery\_tracker\_<env>}. \\
+Database firewall & Only the backend droplet of the same environment may connect. \\
+Monitoring & Droplet monitoring is enabled on all three droplets. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cloud firewall rules per role}
+\label{tab:firewalls}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Firewall} & \textbf{Inbound} & \textbf{Outbound} \\
+\midrule
+Bastion & TCP 22 from each CIDR of \texttt{allowed\_admin\_cidrs} only & All TCP and UDP \\
+Frontend & TCP 22 from the bastion tag; TCP 80 and 443 from anywhere & All TCP and UDP \\
+Backend & TCP 22 from the bastion tag; the application port (default 8080) from the frontend tag only & All TCP and UDP \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Outbound rules are open in the current design, which keeps package installation and image pulls simple; restricting them is a possible hardening step.
+
+\subsection{DNS}
+
+The zone \texttt{3assasa.software} is managed in DigitalOcean. Table~\ref{tab:dns} lists the records. The public names serve users and administrators; the private names resolve to VPC addresses and give Ansible and the applications stable names that do not depend on IP addresses.
+
+\begin{table}[H]
+\centering
+\caption{DNS records declared in Terraform}
+\label{tab:dns}
+\renewcommand{\arraystretch}{1.15}
+\small
+\begin{tabularx}{\linewidth}{@{}l l >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Name} & \textbf{Type} & \textbf{Points to} \\
+\midrule
+\texttt{@} (root) & A & Production frontend, public IP \\
+\texttt{bastion.production} & A & Production bastion, public IP \\
+\texttt{staging} & A & Staging frontend, public IP \\
+\texttt{bastion.staging} & A & Staging bastion, public IP \\
+\texttt{frontend-private.<env>}, \texttt{backend-private.<env>} & A & Private VPC addresses of the frontend and backend of each environment \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Policy as Code}
+
+Two additional layers verify the Terraform code before it is applied. Static analyzers (tfsec and Checkov) inspect the HCL files. Open Policy Agent rules written in Rego, stored in \texttt{infra/policy/}, are evaluated on the JSON form of the plan, so that a violating change is rejected before any resource is created. Table~\ref{tab:rego} lists the seven checks of the two policy files, which share the package \texttt{terraform.security}.
+
+\begin{table}[H]
+\centering
+\caption{Rego policies evaluated on the Terraform plan}
+\label{tab:rego}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Rule} & \textbf{Intent} \\
+\midrule
+1 & Deny any firewall other than the bastion's that allows SSH from \texttt{0.0.0.0/0} or \texttt{::/0}. \\
+2 & Deny a bastion firewall that allows SSH from a public CIDR. \\
+3 & Deny a bastion SSH rule that has no source address. \\
+4 & Deny droplets whose image is not in the approved list (\texttt{ubuntu-22-04-x64}, \texttt{debian-12-x64}). \\
+5 & Deny droplets without at least one SSH key (checked only when the key list is known at plan time). \\
+6 & Require the tag \texttt{role:bastion-<env>} on the bastion droplet, since the firewalls select the bastion by this tag. \\
+7 & Require an \texttt{env:<env>} tag on every droplet. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The first version of these rules identified resources by their Terraform address, by a name prefix and by the content of the cloud-init script, and several of them could therefore never match the real plan (resources live inside a module, droplets are named \texttt{<env>-bastion}, and fail2ban is installed by Ansible rather than by cloud-init). The rules were rewritten in the \texttt{rego.v1} dialect to select resources by type and planned name, and the fail2ban rule was removed. They were verified locally with Conftest on two synthetic plans: a compliant plan passed all seven checks and a non-compliant plan produced seven failures, one per check. The policies have not been evaluated against a plan produced by the real provider in the pipeline; Chapter~\ref{chap:results} reports only what was actually run.
+
+%------------------------------------------------
+\section{Configuration Management Design (Ansible)}
+
+\subsection{Principles}
+
+Terraform creates machines; Ansible turns them into hardened, application-ready servers and deploys the containers. The design rests on four decisions.
+
+\begin{itemize}
+    \item \textbf{Inventory generated from Terraform.} The script \texttt{generate\_inventory.py} reads \texttt{terraform output -json} and writes \texttt{inventories/from\_terraform.yml}, with groups per environment (\texttt{staging}, \texttt{production}) and per role (\texttt{bastion}, \texttt{frontend}, \texttt{backend}). The inventory is a generated, git-ignored file, so IP addresses are never copied by hand (Figure~\ref{fig:terraform-ansible-integration}).
+    \item \textbf{Access through the bastion.} Frontend and backend servers have no public SSH; Ansible reaches them with SSH \texttt{ProxyJump} through the bastion of the same environment, with the key held in an SSH agent.
+    \item \textbf{Two-phase bootstrap.} A fresh droplet only accepts \texttt{root}. Phase~1 connects as \texttt{root} and creates the unprivileged \texttt{ansible} service user with passwordless sudo and the same authorized keys; the Makefile then records a marker file and regenerates the inventory so that every later connection uses the \texttt{ansible} user. Phase~2 applies the hardening roles as that user, after which SSH hardening disables root login and password authentication. A separate playbook, \texttt{migrate-to-ansible-user.yml}, performs the same migration on hosts that were first configured as \texttt{root}.
+    \item \textbf{One vault per environment.} Environment-specific secrets (database credentials, JWT key, registry token) live in \texttt{group\_vars/<env>/vault.yml}, encrypted with Ansible Vault; the vault password file is excluded from version control.
+\end{itemize}
+
+\input{figures/fig4-6}
+
+\subsection{Roles}
+
+Table~\ref{tab:roles} lists the twelve roles of the repository, their purpose as defined by their tasks, and which playbook applies them.
+
+\begin{table}[H]
+\centering
+\caption{Ansible roles and their place in the playbooks}
+\label{tab:roles}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{3.2cm}@{}}
+\toprule
+\textbf{Role} & \textbf{Purpose} & \textbf{Applied by} \\
+\midrule
+\texttt{ansible\_user} & Creates the \texttt{ansible} service user, sudo membership and SSH keys. & bootstrap (phase 1), migration \\
+\texttt{common} & Package updates and base packages, timezone, system limits, log rotation, unattended security upgrades. & bootstrap (phase 2) \\
+\texttt{ssh\_hardening} & Disables root and password login, restricts allowed users, limits authentication attempts, validates the configuration before restarting \texttt{sshd}. & bootstrap (phase 2) \\
+\texttt{firewall} & Host firewall (UFW) with default deny, SSH from the detected admin address and the VPC, HTTP/HTTPS on the frontend. & bootstrap (phase 2) \\
+\texttt{fail2ban} & Bans repeated SSH failures (bastion); a custom Nginx jail on the frontend; ban notification is configured with the e-mail ``mail with logs'' action, which assumes a local mail transfer agent. & bootstrap (bastion only) \\
+\texttt{app\_backend} & Renders the environment file and Compose file, starts the backend container, waits for health, installs a database migration script and a monitoring cron job. & deploy (backend) \\
+\texttt{app\_frontend} & Renders the Compose file, Nginx site, cache and security-header snippets (HSTS, X-Frame-Options, a restrictive Content-Security-Policy), starts the frontend container. & deploy (frontend) \\
+\texttt{verify} & Post-deployment checks: uptime, required services, container health, endpoint and certificate checks, disk space. & deploy (all hosts) \\
+\texttt{docker\_runtime} & Installs Docker Engine and configures the daemon (log rotation). & bootstrap (app servers) \\
+\texttt{nginx\_tls} & Installs Nginx and Certbot, hardened TLS parameters, certificate issuance (standalone mode, with hooks that stop and start Nginx) and renewal. & bootstrap (frontend) \\
+\texttt{observability} & Installs Prometheus Node Exporter as a service; log-monitoring script that posts to Slack only if a webhook is defined. & bootstrap (app servers) \\
+\texttt{registry\_login} & Logs the host in to GitHub Container Registry with a token from the vault or the environment. & deploy \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+All twelve roles are therefore used by a playbook. This was not the case initially: four roles were not referenced, and the environment template and the image references did not match what the application reads (variable names, Spring profile) nor the registry used by the pipeline (GHCR). The playbooks and templates were corrected during the final revision, and the playbooks pass \texttt{ansible-playbook --syntax-check}. They have, however, not been run against real servers in this revision, so their effect on actual hosts remains to be verified.
+
+\subsection{Operator Interface}
+
+The Makefile in \texttt{ansible/} is the single entry point; it takes the environment as a variable (\texttt{ENV=staging|production}), refuses any other value, and detects whether the \texttt{ansible} user is already enabled. Table~\ref{tab:make} lists the targets.
+
+\begin{table}[H]
+\centering
+\caption{Targets of the Ansible Makefile}
+\label{tab:make}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Target} & \textbf{Effect} \\
+\midrule
+\texttt{inventory} & Exports Terraform outputs, generates the inventory and tests SSH connectivity through the bastion. \\
+\texttt{bootstrap} & Phase 1 as \texttt{root} (create the \texttt{ansible} user), regenerate the inventory, then phase 2 (hardening) as \texttt{ansible}. \\
+\texttt{migrate-to-ansible-user} & Migrate already configured hosts from \texttt{root} to the service user. \\
+\texttt{deploy} & Run the deployment playbook (registry login, backend, then frontend, then verification); optional \texttt{TAGS}, \texttt{LIMIT} and \texttt{DEPLOY\_VERSION} (image tag prefix). \\
+\texttt{verify} & Ping the hosts of the environment and sample their uptime. \\
+\texttt{ssh-test}, \texttt{lint}, \texttt{check-syntax}, \texttt{clean} & SSH agent test, \texttt{ansible-lint}, playbook syntax check, removal of logs and of the migration marker. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The deployment playbook rolls out hosts one at a time by default (\texttt{serial: 1}), logs each host in to the registry, deploys the backend before the frontend, and ends with a Slack notification only when a webhook is defined in the environment variables.
+
+%------------------------------------------------
+\section{CI/CD Pipeline Design}
+\label{sec:pipeline}
+
+The pipeline is split into two lanes that share the same philosophy (fail early, keep evidence) but react to different changes, as shown in Figure~\ref{fig:devsecops-pipeline}. Their implementation is described in the next chapter.
+
+\input{figures/fig4-7}
+
+\paragraph{Application lane.} A push touching \texttt{back/} or \texttt{front/}, or a pull request towards \texttt{main}, builds the application and runs its tests. A Docker image is then built and pushed to GitHub Container Registry, tagged with the commit identifier, and the security workflow (a reusable workflow called with the image tag) scans the code, the dependencies and the image. The continuous-deployment part is deliberately minimal: for the backend, a workflow, started when the infrastructure workflow completes successfully (scheduled runs excluded), connects over SSH to a host and runs \texttt{git pull} and \texttt{docker compose up}; for the frontend it is a placeholder. The images built by the pipeline carry the suffix \texttt{-staging}, so a production deployment needs an explicit image tag. The full Ansible-based deployment is run by an operator from the Makefile.
+
+\paragraph{Infrastructure lane.} A change to \texttt{infra/} on \texttt{main} or a manual run triggers static analysis, \texttt{terraform validate}, a plan exported to JSON and the Conftest policy check (evaluating the namespace \texttt{terraform.security}); on \texttt{main} the saved plan is applied by a separate job attached to a GitHub environment. The weekly schedule neither applies changes nor runs the policy check: it starts only the drift-detection job. A pull request touching \texttt{infra/} also runs a plan and an OPA evaluation, which fails if any rule is violated. Once a week, the drift-detection job plans the staging environment, and the production environment if its workspace exists, and opens a labeled GitHub issue when the real infrastructure differs from the code.
+
+\paragraph{Gates.} Table~\ref{tab:gates} separates the checks that fail the workflow run from those that only report. A failing job makes the run fail; whether this prevents a merge depends on the branch-protection rules of the repository, which are settings of the hosting platform and not part of the versioned code.
+
+\begin{table}[H]
+\centering
+\caption{Security and quality checks of the pipeline and their effect on the run}
+\label{tab:gates}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabular}{@{}p{2.3cm}p{3cm}>{\raggedright\arraybackslash}p{5.9cm}>{\raggedright\arraybackslash}p{3.2cm}@{}}
+\toprule
+\textbf{Stage} & \textbf{Tool} & \textbf{Scope and threshold} & \textbf{Effect} \\
+\midrule
+Tests & Maven, npm & Backend tests with JaCoCo report; frontend tests & Fails the run \\
+Secrets & Gitleaks & Repository history & Fails on a leak \\
+SAST & Semgrep (\texttt{p/ci}) & Source code & Reports findings \\
+SCA (backend) & OWASP Dependency-Check & \texttt{back/}; fail on CVSS $\geq$ 7 (SARIF step) & Fails the run \\
+SCA (frontend) & npm audit & JSON report kept as artifact & Report only (\texttt{|| true}) \\
+Filesystem & Trivy & SARIF for HIGH and CRITICAL; gate on CRITICAL with fixes available & Fails on CRITICAL \\
+Image & Trivy & SARIF report, then gate on HIGH and CRITICAL & Fails the run \\
+IaC static analysis & tfsec, Checkov & \texttt{infra/} & Fails on findings (default behavior) \\
+Policy & Conftest, OPA & Terraform plan JSON & Fails on a denied rule \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+We checked the repository settings through the GitHub API. The \texttt{main} branch has no branch protection and no ruleset, and the only environment defined in the repository is \texttt{github-pages}. In consequence, the jobs of Table~\ref{tab:gates} fail a workflow run but are not required checks: nothing prevents a change from being merged or pushed to \texttt{main} while a run is red, and the \texttt{apply} job of the Terraform workflow refers to environments (\texttt{staging}, \texttt{production}) that have no protection rules, so no manual approval or reviewer is needed before it runs. The gates are therefore effective only as long as the authors respect them. Making the main jobs required status checks and protecting the \texttt{production} environment with reviewers are listed as future work in Chapter~\ref{chap:conclusion}.
+
+%------------------------------------------------
+\section{Test Strategy}
+
+The backend is tested at four levels: unit tests of the service layer with mocked repositories, controller tests of the HTTP contract with a test security configuration, repository tests against an in-memory H2 database, and integration tests that load the application context. JaCoCo produces a coverage report, which the workflow uploads to Codecov. The frontend relies on the Jest runner provided by Create React App. The Driver module served as the reference for each level and was reproduced for the Client and TransportLog modules, and the authentication controller and the security behavior are covered by dedicated tests. The suite contains 82 backend tests, all passing, with a line coverage of 77.1\,\% measured with JaCoCo (see Chapter~\ref{chap:results}). The test of security behavior loads the real filter chain and verifies that unauthenticated, malformed and expired tokens are answered with \texttt{401} and that a valid login gives access. The frontend tests remain limited to smoke tests.
+
+Security testing is covered by the pipeline checks of Table~\ref{tab:gates} and by the security integration tests described above; no dynamic application security testing (DAST) was performed. The measurements are presented in Chapter~\ref{chap:results}.

@@ -1,0 +1,105 @@
+%========================================================================================
+%   Front matter: dedication, acknowledgements, abstracts, lists, acronyms
+%========================================================================================
+\pagenumbering{roman}
+\setcounter{page}{1}
+
+% ---------------- Dedication ----------------
+\chapter*{Dedication}
+\addcontentsline{toc}{chapter}{Dedication}
+\markboth{Dedication}{}
+\begin{center}
+\vspace*{4cm}
+\itshape
+To our families,\\
+for their patience, their trust and their constant support,\\[0.6em]
+and to all those who encouraged us along the way.
+\end{center}
+\clearpage
+
+% ---------------- Acknowledgements ----------------
+\chapter*{Acknowledgements}
+\addcontentsline{toc}{chapter}{Acknowledgements}
+\markboth{Acknowledgements}{}
+We would like to express our gratitude to everyone who contributed, directly or indirectly, to the completion of this work.
+
+We first thank our academic supervisor, Mrs.\ Latifa Makhlouf, for her guidance, her availability and her careful reading of our work. Her remarks pushed us to support every claim of this report with evidence.
+
+We thank Youssra Trans-N\'egoce and its team for welcoming us during this internship and for giving us a concrete, realistic problem to work on. The discussions about the daily work of a transport company gave a purpose to the technical choices described in this report.
+
+We also thank the teaching staff of the \'Ecole Nationale des Sciences Appliqu\'ees (ENSA) for the training we received, which gave us the foundations needed to carry out this project, and the members of the jury for the time they devote to reading and evaluating this report.
+
+Finally, we thank our families and our friends for their support and encouragement throughout our studies.
+\clearpage
+
+% ---------------- Abstract ----------------
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+\markboth{Abstract}{}
+This report presents the Delivery Tracker project, carried out during a one-month final-year internship at Youssra Trans-N\'egoce, a transport company. The company needs to record its clients, drivers and transport logs reliably, and the project goes beyond the application itself: the code is delivered through a pipeline in which security is verified at every stage, following DevSecOps principles. We built a Spring Boot REST API secured with JSON Web Tokens, a React single-page frontend and a PostgreSQL database, packaged in non-root Docker images. The infrastructure on DigitalOcean is described with Terraform, servers are configured with Ansible, and GitHub Actions workflows chain build, tests, secret detection, static analysis, dependency and image scanning, and Open Policy Agent rules checked against the Terraform plan.
+
+The evidence collected at the end of the internship shows 82 passing backend tests with 77.1\,\% line coverage, no finding from Semgrep on the application code, unauthenticated requests rejected with HTTP 401, and images of 353\,MB and 70.1\,MB. It also shows the limits of the work: a single administrator account, report-only auditing of frontend dependencies, a Terraform workflow that never succeeded on the remote repository, and Ansible roles not yet executed against real servers. A review of our own implementation corrected several pipeline defects, such as gates that could not fail and policies that could not match. We conclude with a prioritized list of future work.
+
+\textbf{Keywords:} DevSecOps, CI/CD, GitHub Actions, Spring Boot, JWT, Docker, Terraform, Ansible, Open Policy Agent, security scanning, Infrastructure as Code.
+\clearpage
+
+% ---------------- Résumé ----------------
+\begin{otherlanguage}{french}
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+\markboth{Résumé}{}
+Ce rapport pr\'esente le projet Delivery Tracker, r\'ealis\'e lors d'un stage de fin d'\'etudes d'un mois chez Youssra Trans-N\'egoce, une entreprise de transport. L'entreprise a besoin d'enregistrer de fa\c con fiable ses clients, ses chauffeurs et ses bons de transport. Le projet ne se limite pas \`a l'application : le code est livr\'e par une cha\^ine dans laquelle la s\'ecurit\'e est v\'erifi\'ee \`a chaque \'etape, selon les principes DevSecOps. Nous avons r\'ealis\'e une API REST Spring Boot s\'ecuris\'ee par des jetons JSON Web Token, un frontend React en application monopage et une base PostgreSQL, empaquet\'es dans des images Docker sans privil\`eges root. L'infrastructure sur DigitalOcean est d\'ecrite avec Terraform, les serveurs sont configur\'es avec Ansible, et des workflows GitHub Actions encha\^inent la compilation, les tests, la d\'etection de secrets, l'analyse statique, l'analyse des d\'ependances et des images, ainsi que des r\`egles Open Policy Agent v\'erifi\'ees sur le plan Terraform.
+
+Les mesures recueillies \`a la fin du stage montrent 82 tests backend r\'eussis avec 77,1\,\% de couverture de lignes, aucune alerte de Semgrep sur le code de l'application, des requ\^etes non authentifi\'ees rejet\'ees par un code HTTP 401, et des images de 353\,Mo et 70,1\,Mo. Elles montrent aussi les limites du travail : un seul compte administrateur, un audit des d\'ependances frontend en simple rapport, un workflow Terraform qui n'a jamais r\'eussi sur le d\'ep\^ot distant, et des r\^oles Ansible non encore ex\'ecut\'es sur de vrais serveurs. Une revue de notre propre impl\'ementation a permis de corriger plusieurs d\'efauts de la cha\^ine, comme des contr\^oles qui ne pouvaient pas \'echouer et des politiques qui ne pouvaient pas s'appliquer. Nous concluons par une liste de travaux futurs class\'es par priorit\'e.
+
+\textbf{Mots-cl\'es :} DevSecOps, CI/CD, GitHub Actions, Spring Boot, JWT, Docker, Terraform, Ansible, Open Policy Agent, analyse de s\'ecurit\'e, infrastructure en tant que code.
+\end{otherlanguage}
+\clearpage
+
+% ---------------- Tables of contents and lists ----------------
+\tableofcontents
+\clearpage
+\listoffigures
+\addcontentsline{toc}{chapter}{List of Figures}
+\clearpage
+\listoftables
+\addcontentsline{toc}{chapter}{List of Tables}
+\clearpage
+
+% ---------------- List of acronyms ----------------
+\chapter*{List of Acronyms}
+\addcontentsline{toc}{chapter}{List of Acronyms}
+\markboth{List of Acronyms}{}
+\begin{acronym}[WWWWWWWW]
+  \acro{API}{Application Programming Interface}
+  \acro{CD}{Continuous Delivery / Deployment}
+  \acro{CI}{Continuous Integration}
+  \acro{CORS}{Cross-Origin Resource Sharing}
+  \acro{CRUD}{Create, Read, Update, Delete}
+  \acro{CSP}{Content Security Policy}
+  \acro{DAST}{Dynamic Application Security Testing}
+  \acro{DNS}{Domain Name System}
+  \acro{DTO}{Data Transfer Object}
+  \acro{ENSA}{\'Ecole Nationale des Sciences Appliqu\'ees}
+  \acro{HSTS}{HTTP Strict Transport Security}
+  \acro{HTTP}{Hypertext Transfer Protocol}
+  \acro{IaC}{Infrastructure as Code}
+  \acro{JPA}{Jakarta Persistence API}
+  \acro{JWT}{JSON Web Token}
+  \acro{OPA}{Open Policy Agent}
+  \acro{ORM}{Object-Relational Mapping}
+  \acro{OWASP}{Open Worldwide Application Security Project}
+  \acro{PFE}{Projet de Fin d'\'Etudes (Final Year Project)}
+  \acro{RBAC}{Role-Based Access Control}
+  \acro{REST}{Representational State Transfer}
+  \acro{SAST}{Static Application Security Testing}
+  \acro{SCA}{Software Composition Analysis}
+  \acro{SDLC}{Software Development Life Cycle}
+  \acro{SPA}{Single-Page Application}
+  \acro{SSH}{Secure Shell}
+  \acro{TLS}{Transport Layer Security}
+  \acro{UFW}{Uncomplicated Firewall}
+  \acro{UML}{Unified Modeling Language}
+  \acro{VPC}{Virtual Private Cloud}
+\end{acronym}
+\clearpage

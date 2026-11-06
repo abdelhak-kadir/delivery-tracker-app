@@ -1,6 +1,6 @@
 upstream backend_servers {
     least_conn;
-{% for host in groups['backend'] %}
+{% for host in groups['backend'] | intersect(groups[env_name]) %}
     server {{ hostvars[host]['ansible_default_ipv4']['address'] }}:{{ app.port }};
 {% endfor %}
 }
@@ -31,7 +31,8 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://backend_servers/;
+        # no trailing slash: the backend serves /api/v1/... so the prefix must be preserved
+        proxy_pass http://backend_servers;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }

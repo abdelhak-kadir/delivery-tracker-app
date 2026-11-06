@@ -1,13 +1,131 @@
 name: Backend Security Scans
 
 on:
-  workflow_run:
-    workflows: ["CI Backend"]
-    types: [completed]
+  workflow_call:
+    inputs:
+      image_tag:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  security-events: write
+  packages: read
 
 jobs:
-  placeholder:
+  security-gate:
     runs-on: ubuntu-latest
     steps:
-      - name: Security Scans Placeholder
-        run: echo "Security scans placeholder"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # ------------------ Secrets Detection ------------------
+      - name: Run Gitleaks (Secrets Detection)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ------------------ Software Composition Analysis ------------------
+      - name: Run OWASP Dependency-Check (HTML)
+        uses: dependency-check/Dependency-Check_Action@main
+        env:
+          JAVA_HOME: /opt/jdk
+        with:
+          project: 'delivery-tracker'
+          path: './back'
+          format: 'HTML'
+          out: 'reports'
+
+      - name: Run OWASP Dependency-Check (SARIF)
+        uses: dependency-check/Dependency-Check_Action@main
+        env:
+          JAVA_HOME: /opt/jdk
+        with:
+          project: 'delivery-tracker'
+          path: './back'
+          format: 'SARIF'
+          out: 'reports'
+          args: >
+            --failOnCVSS 7
+            --enableRetired
+
+      - name: Upload Dependency-Check reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dependency-Check Reports
+          path: reports/
+
+      - name: Upload SARIF report
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: reports/dependency-check-report.sarif
+
+      # ------------------ SAST ------------------
+      - name: Run Semgrep (SAST)
+        uses: returntocorp/semgrep-action@v1
+        with:
+          publishToken: ${{ secrets.SEMGREP_TOKEN }}
+          config: 'p/ci'
+
+      # Install Trivy
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+          sudo mv ./bin/trivy /usr/local/bin/
+
+      # Filesystem scan
+      - name: Trivy FS Scan (SARIF report)
+        run: trivy fs --exit-code 0 --severity HIGH,CRITICAL --format sarif -o trivy-fs.sarif .
+
+      - name: Upload FS SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+
+      - name: Trivy FS Gate (fail on CRITICAL)
+        run: trivy fs --exit-code 1 --severity CRITICAL --ignore-unfixed .
+
+      # Docker login (separated from scanning)
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Docker image scan
+      - name: Trivy Docker Image Scan
+        run: |
+          trivy image --severity HIGH,CRITICAL --format sarif -o trivy-image.sarif "$IMAGE_TAG" \
+          --exit-code 0
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+
+      - name: Upload Docker Image SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image
+
+      - name: Fail if HIGH/CRITICAL vulnerabilities found
+        run: |
+          trivy image --exit-code 1 --severity HIGH,CRITICAL "$IMAGE_TAG"
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}

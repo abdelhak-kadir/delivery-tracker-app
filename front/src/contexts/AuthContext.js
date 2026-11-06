@@ -32,17 +32,6 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const loginDemo = () => {
-  const demoUser = { username: 'demo' };
-
-  // Set authentication state
-  localStorage.setItem('authToken', 'demo-token'); // fake token
-  localStorage.setItem('username', demoUser.username);
-
-  setIsAuthenticated(true);
-  setUser(demoUser);
-};
-
   const login = async (credentials) => {
     try {
       console.log('AuthContext: Attempting login...');
@@ -122,7 +111,6 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated,
     user,
     login,
-    loginDemo,
     logout,
     loading
   };

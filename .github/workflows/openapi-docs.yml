@@ -1,117 +1,80 @@
-name: Build and Generate OpenAPI Docs
+name: Generate OpenAPI Docs
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI Backend"]
+    types:
+      - completed
     branches:
-      - features/back
-    paths:
-      - back/**
-  pull_request:
-    paths:
-      - back/**
+      - main # Only run this on main branch completions
 
 jobs:
-  build-and-generate-docs:
+  generate-docs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pages: write
       id-token: write
-    env:
-      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-
-      APP_USER_USERNAME: ${{ secrets.APP_USER_USERNAME }}
-      APP_USER_PASSWORD: ${{ secrets.APP_USER_PASSWORD }}
-      JWT_SECRET : ${{ secrets.JWT_SECRET }}
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Pull Docker image and get SHA
+        run: |
+          GITHUB_SHA=$(curl -s "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/jobs" | jq '.jobs[] | select(.name == "build-and-push-docker") | .steps[] | select(.name == "Build and Push Docker Image") | .name' | grep -oE '[0-9a-f]{40}')
+          echo "IMAGE_SHA=${GITHUB_SHA}" >> $GITHUB_ENV
+          docker pull ghcr.io/${{ github.repository_owner }}/spring-boot-backend:${GITHUB_SHA}
+      
+      - name: Start backend container
+        run: |
+          docker run -d --name spring-boot-app \
+            -p 8080:8080 \
+            -e POSTGRES_DB=${{ secrets.POSTGRES_DB }} \
+            -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
+            -e POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+            -e APP_USER_USERNAME=${{ secrets.APP_USER_USERNAME }} \
+            -e APP_USER_PASSWORD=${{ secrets.APP_USER_PASSWORD }} \
+            -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+            ghcr.io/${{ github.repository_owner }}/spring-boot-backend:${{ env.IMAGE_SHA }}
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Wait for Spring Boot app to be ready
+        run: |
+          ATTEMPTS=0
+          MAX_ATTEMPTS=60
+          SLEEP_TIME=2
+          while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+            if curl -s http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
+              echo "Spring Boot app is ready!"
+              break
+            fi
+            echo "Waiting for Spring Boot app... Attempt $((ATTEMPTS+1)) of $MAX_ATTEMPTS"
+            sleep $SLEEP_TIME
+            ATTEMPTS=$((ATTEMPTS+1))
+          done
 
-    - name: Set up Docker Compose
-      run: |
-        if ! docker compose version &> /dev/null; then
-          echo "Docker Compose V2 not found, attempting to install..."
-          DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
-          mkdir -p $DOCKER_CONFIG/cli-plugins
-          curl -SL https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
-          chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
-          echo "Docker Compose V2 installed."
-        else
-          echo "Docker Compose V2 already available."
-        fi
-        echo "$DOCKER_CONFIG/cli-plugins" >> $GITHUB_PATH
-
-    - name: Set up Java 21
-      uses: actions/setup-java@v3
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-
-    - name: Build Spring Boot app with Maven
-      run: mvn clean package -DskipTests=true -f back/pom.xml
-
-    - name: Build Docker Image for Spring Boot App
-      run: docker buildx build --load -t spring-boot-app-image:latest -f back/Dockerfile back
-
-    - name: Start Docker Compose stack
-      run: docker compose -f docker/docker-compose.yaml up -d
-
-    - name: Wait for Spring Boot app to be ready
-      run: |
-        ATTEMPTS=0
-        MAX_ATTEMPTS=60 # Increased from 30 to 60 as discussed, consider further if needed
-        SLEEP_TIME=2
-        while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
-          if curl -s http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
-            echo "Spring Boot app is ready!"
-            break
+          if [ $ATTEMPTS -eq $MAX_ATTEMPTS ]; then
+            echo "Spring Boot app did not become ready in time."
+            docker logs spring-boot-app
+            exit 1
           fi
-          echo "Waiting for Spring Boot app... Attempt $((ATTEMPTS+1)) of $MAX_ATTEMPTS"
-          sleep $SLEEP_TIME
-          ATTEMPTS=$((ATTEMPTS+1))
-        done
 
-        if [ $ATTEMPTS -eq $MAX_ATTEMPTS ]; then
-          echo "Spring Boot app did not become ready in time."
-          docker compose -f docker/docker-compose.yaml logs app
-          exit 1
-        fi
+      - name: Export OpenAPI YAML
+        run: curl -s http://localhost:8080/v3/api-docs.yaml -o ./.github/workflows/swagger-ui/openapi.yaml
 
-    # REMOVED: - name: Create swagger-ui directory
-    # You already have the directory with your assets at ./.github/workflows/swagger-ui/
+      - name: Set up Node.js for linting tools
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
 
-    - name: Export OpenAPI YAML
-      # IMPORTANT: Export directly into the existing Swagger UI assets directory
-      run: curl -s http://localhost:8080/v3/api-docs.yaml -o ./.github/workflows/swagger-ui/openapi.yaml
+      - name: Lint with Redocly CLI
+        run: |
+          npm install @redocly/cli
+          npx redocly lint ./.github/workflows/swagger-ui/openapi.yaml
 
-    # REMOVED: All steps related to setting up Node.js for Swagger UI dist and copying assets
-    # (These were: 'Set up Node.js for Swagger UI', 'Install Swagger UI Dist', 'Copy Swagger UI assets to publish directory')
-
-    - name: Set up Node.js for linting tools
-      uses: actions/setup-node@v3
-      with:
-        node-version: '20'
-
-    - name: Lint with Redocly CLI
-      run: |
-        npm install @redocly/cli
-        # IMPORTANT: Lint the openapi.yaml in its new, correct location
-        npx redocly lint ./.github/workflows/swagger-ui/openapi.yaml
-
-    - name: Tear down Docker Compose stack
-      run: docker compose -f docker/docker-compose.yaml down
-
-    - name: Deploy Swagger UI to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      if: success()
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        # CRITICAL CHANGE: Point publish_dir to your existing, asset-filled directory
-        publish_dir: ./.github/workflows/swagger-ui
-        publish_branch: gh-pages
+      - name: Deploy Swagger UI to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: success()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./.github/workflows/swagger-ui
+          publish_branch: gh-pages

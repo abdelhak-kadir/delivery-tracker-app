@@ -1,0 +1,65 @@
+- name: Update package cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  tags: ['packages']
+
+- name: Upgrade all packages
+  apt:
+    upgrade: dist
+    autoremove: yes
+    autoclean: yes
+  tags: ['packages', 'security']
+
+- name: Install common packages
+  ansible.builtin.apt:
+    name: "{{ common_packages | default(['curl', 'wget', 'htop', 'vim', 'git', 'unzip', 'ca-certificates', 'gnupg', 'lsb-release']) }}"
+    state: present
+    update_cache: yes
+  tags: ['packages']
+
+
+- name: Set timezone
+  timezone:
+    name: "{{ timezone | default('UTC') }}"
+  tags: ['system']
+
+- name: Configure system limits
+  pam_limits:
+    domain: '*'
+    limit_type: "{{ item.type }}"
+    limit_item: nofile
+    value: "{{ item.value }}"
+  loop:
+    - { type: 'soft', value: "{{ system_limits.soft_nofile | default(65536) }}" }
+    - { type: 'hard', value: "{{ system_limits.hard_nofile | default(65536) }}" }
+  tags: ['system', 'limits']
+
+- name: Create application user
+  user:
+    name: "{{ app.name | default('delivery-tracker') }}"
+    system: yes
+    shell: /bin/bash
+    home: "/opt/{{ app.name | default('delivery-tracker')}}"
+    create_home: yes
+  tags: ['users']
+
+- name: Configure logrotate for application logs
+  template:
+    src: logrotate.j2
+    dest: "/etc/logrotate.d/{{ app.name | default('delivery-tracker')}}"
+    mode: '0644'
+  tags: ['logging']
+
+- name: Install and configure unattended-upgrades
+  apt:
+    name: unattended-upgrades
+    state: present
+  tags: ['security', 'updates']
+
+- name: Configure unattended-upgrades
+  template:
+    src: 50unattended-upgrades.j2
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    mode: '0644'
+  tags: ['security', 'updates']

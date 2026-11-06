@@ -1,0 +1,30 @@
+\begin{figure}[H]
+\centering
+\begin{adjustbox}{max width=\linewidth}
+\begin{tikzpicture}[>=latex, thick, auto,
+  st/.style={rectangle, draw=Eblue, fill=Ecyan!12, rounded corners=6pt, minimum width=2.7cm, minimum height=1.6cm, font=\scriptsize, align=center, text width=2.55cm},
+  gate/.style={rectangle, draw=Egreen, fill=Egreen!10, rounded corners=6pt, minimum width=2.7cm, minimum height=1.6cm, font=\scriptsize, align=center, text width=2.55cm},
+  ltr/.style={font=\small\bfseries, anchor=south west}]
+% Application lane
+\node[ltr] at (0.45,0.9) {Application lane};
+\node[st] (a1) at (1.8,0) {Trigger\\push / pull request\\(back/, front/)};
+\node[st, right=0.5cm of a1] (a2) {Build and test\\Maven, npm,\\JaCoCo};
+\node[st, right=0.5cm of a2] (a3) {Container image\\Docker Buildx,\\push to GHCR};
+\node[gate, right=0.5cm of a3] (a4) {Security gate\\Gitleaks, Semgrep,\\Dependency-Check /\\npm audit, Trivy};
+\node[st, right=0.5cm of a4] (a5) {Deploy\\backend: SSH +\\Compose; frontend:\\placeholder};
+\foreach \a/\b in {a1/a2,a2/a3,a3/a4,a4/a5}{\draw[->, Eblue] (\a) -- (\b);}
+% Infrastructure lane
+\node[ltr] at (0.45,-1.9) {Infrastructure lane};
+\node[st] (i1) at (1.8,-2.8) {Trigger\\push to main (infra/),\\manual; weekly cron =\\drift check only};
+\node[gate, right=0.5cm of i1] (i2) {Static analysis\\tfsec, Checkov};
+\node[st, right=0.5cm of i2] (i3) {Init, validate,\\plan (JSON)};
+\node[gate, right=0.5cm of i3] (i4) {Policy gate\\Conftest / OPA\\(Rego rules)};
+\node[st, right=0.5cm of i4] (i5) {Apply on main\\(environment-scoped\\job)};
+\foreach \a/\b in {i1/i2,i2/i3,i3/i4,i4/i5}{\draw[->, Eblue] (\a) -- (\b);}
+\node[st, fill=Eorange!12, draw=Eorange, below=0.9cm of i3] (drift) {Drift detection\\(weekly plan),\\GitHub issue\\on drift};
+\draw[->, Eorange] (i1.south) |- (drift.west);
+\end{tikzpicture}
+\end{adjustbox}
+\caption{CI/CD pipeline design: application lane and infrastructure lane (green boxes are gates that can fail a run)}
+\label{fig:devsecops-pipeline}
+\end{figure}

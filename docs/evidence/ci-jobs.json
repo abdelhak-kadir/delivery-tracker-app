@@ -1,0 +1,92 @@
+{
+ "CD Frontend": {
+  "runId": 18445594811,
+  "createdAt": "2025-10-12T15:00:52Z",
+  "headBranch": "main",
+  "total_s": 2.0,
+  "jobs": [
+   {
+    "name": "deploy",
+    "conclusion": "success",
+    "durationSec": 2.0
+   }
+  ]
+ },
+ "CI Frontend": {
+  "runId": 18445560020,
+  "createdAt": "2025-10-12T14:56:40Z",
+  "headBranch": "main",
+  "total_s": 246.0,
+  "jobs": [
+   {
+    "name": "build-and-test",
+    "conclusion": "success",
+    "durationSec": 69.0
+   },
+   {
+    "name": "build-and-push-docker",
+    "conclusion": "success",
+    "durationSec": 108.0
+   },
+   {
+    "name": "security-scans / security-gate",
+    "conclusion": "success",
+    "durationSec": 64.0
+   }
+  ]
+ },
+ "CI Backend": {
+  "runId": 18445487440,
+  "createdAt": "2025-10-12T14:48:29Z",
+  "headBranch": "main",
+  "total_s": 383.0,
+  "jobs": [
+   {
+    "name": "build",
+    "conclusion": "success",
+    "durationSec": 57.0
+   },
+   {
+    "name": "test",
+    "conclusion": "success",
+    "durationSec": 48.0
+   },
+   {
+    "name": "build-and-push-docker",
+    "conclusion": "success",
+    "durationSec": 140.0
+   },
+   {
+    "name": "security-scans / security-gate",
+    "conclusion": "success",
+    "durationSec": 132.0
+   }
+  ]
+ },
+ "CD Backend": {
+  "runId": 18445484880,
+  "createdAt": "2025-10-12T14:48:12Z",
+  "headBranch": "main",
+  "total_s": 3.0,
+  "jobs": [
+   {
+    "name": "placeholder",
+    "conclusion": "success",
+    "durationSec": 3.0
+   }
+  ]
+ },
+ "Backend Security Scans": {
+  "runId": 18445483244,
+  "createdAt": "2025-10-12T14:48:05Z",
+  "headBranch": "main",
+  "total_s": 3.0,
+  "jobs": [
+   {
+    "name": "placeholder",
+    "conclusion": "success",
+    "durationSec": 3.0
+   }
+  ]
+ }
+}

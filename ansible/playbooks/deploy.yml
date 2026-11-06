@@ -1,0 +1,71 @@
+- name: Deploy Application Stack
+  hosts: all
+  gather_facts: true
+  vars:
+    deployment_timestamp: "{{ ansible_date_time.epoch }}"
+    deployment_version: "{{ deploy_version | default('latest') }}"
+
+  pre_tasks:
+    - name: Create deployment directory
+      file:
+        path: /opt/deployments/{{ deployment_timestamp }}
+        state: directory
+        mode: '0755'
+      tags: ['always']
+
+- name: Deploy Backend Services
+  hosts: backend
+  gather_facts: false
+  serial: "{{ backend_deploy_serial | default(1) }}"
+
+  roles:
+    - role: registry_login
+      tags: ['registry', 'backend', 'application', 'deploy']
+    - role: app_backend
+      tags: ['backend', 'application', 'deploy']
+
+- name: Deploy Frontend Services
+  hosts: frontend
+  gather_facts: false
+  serial: "{{ frontend_deploy_serial | default(1) }}"
+
+  roles:
+    - role: registry_login
+      tags: ['registry', 'frontend', 'application', 'deploy']
+    - role: app_frontend
+      tags: ['frontend', 'application', 'deploy']
+
+- name: Post-Deployment Verification
+  hosts: all
+  gather_facts: false
+
+  roles:
+    - role: verify
+      tags: ['verify', 'post-deploy']
+
+- name: Deployment Cleanup and Notification
+  hosts: frontend
+  gather_facts: false
+  run_once: true
+  vars:
+    deployment_version: "{{ deploy_version | default('latest') }}"
+    notification_timestamp: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+
+  tasks:
+    - name: Send deployment notification
+      uri:
+        url: "{{ monitoring_config.slack_webhook }}"
+        method: POST
+        body_format: json
+        body:
+          text: |
+            🚀 Deployment Completed Successfully
+            Environment: {{ env_name }}
+            Version: {{ deployment_version }}
+            Timestamp: {{ notification_timestamp }}
+      when:
+        - monitoring_config is defined
+        - monitoring_config.slack_webhook is defined
+        - monitoring_config.slack_webhook | length > 0
+      delegate_to: localhost
+      tags: ['notification']

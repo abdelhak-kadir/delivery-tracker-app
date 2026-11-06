@@ -1,0 +1,154 @@
+%========================================================================================
+%   Chapter 1 – Host organization and project context
+%========================================================================================
+
+\chapter{Host Organization and Project Context}\label{chap:context}
+
+This chapter presents the company that hosted the internship, the problem that motivated the project, its objectives and scope, and the way the work was planned and organized.
+
+\section{Host Organization: Youssra Trans-Négoce}
+
+\needsinput{The authors must confirm every company fact of this section with Youssra Trans-Négoce (legal form, capital, address, services, strengths, staff experience, partners), and say whether they come from the company or from a public source.}
+
+\subsection*{Overview}
+Youssra Trans-Négoce is a limited liability company (\emph{SARL à associé unique}) headquartered in Casablanca, Morocco. It operates in national freight transport and logistics and provides distribution and delivery services for professional clients.
+
+\subsection*{Core Services}
+According to the company, its activity covers national and intercity road freight transport, express courier services for parcels and documents, outsourced logistics and warehouse coordination, and delivery scheduling and fleet management for its clients. Its stated strengths are the reliability of its deliveries, a well-maintained vehicle fleet and a nationwide coverage.
+
+\subsection*{Legal Information}
+\begin{itemize}
+    \item Legal form: SARL à associé unique;
+    \item Registered capital: 100\,000 MAD;
+    \item Address: 5 Bd Abdallah Ben Yassine, N\textdegree{} 5 Bis, 7\textsuperscript{th} floor, Casablanca.
+\end{itemize}
+
+\subsection*{Key Partnership}
+The company reports a long-term collaboration with the Label'Vie group (Carrefour, Atacadão), a major Moroccan retail group. Within this collaboration, Youssra Trans-Négoce collects goods from regional warehouses and delivers them to retail outlets, in express, grouped or door-to-door modes.
+\needsinput{Confirm the list of partners with the company. The previous version named Marjane, which does not belong to Label'Vie; only keep the retailers the company actually works with.}
+
+\subsection*{Expertise and Experience}
+The operational knowledge of the company rests on its staff: a senior collaborator with more than 18 years of field experience and a logistics coordinator who has worked on national routes for three years.
+\needsinput{Confirm these experience figures and whether they may be quoted in the report.}
+
+\input{figures/fig1-1}
+
+\needsinput{Provide (or authorize us to draw) an organization chart of the company: management, dispatch, drivers, administration. A placeholder box can be replaced by the real chart.}
+
+%------------------------------------------------
+\section{Context and Problem Statement}
+
+The activity of a transport company produces, for every trip, a set of data that must be recorded accurately because it determines the cost and the price of the service. In the data model of our application, a transport log contains the loading date and location, the unloading date and location, the destination, the delivery note, the advance given to the driver, the fuel quantity and price per liter, a variable charge and its price, the tariff applied to the client, the trip price, the operator and the commercial in charge. Each log is linked to one client and one driver.
+
+\needsinput{Describe how these operations were tracked before the project (paper, spreadsheet, phone calls, an existing tool?), who entered the data, and which concrete difficulties resulted (errors, lost delivery notes, delays in invoicing). The text below is written on the assumption that tracking was manual and must be corrected if it was not.}
+
+Our working assumption is that this information was kept manually, which makes it hard to search, to consolidate per client or per driver, and to protect against loss or unauthorized access. Replacing it with a web application raises a second question, which motivates the DevSecOps orientation of the project (Figure~\ref{fig:devsecops-lifecycle}): the application manipulates identities of clients, prices and tariffs, and is exposed on the Internet. Four concerns follow from this.
+
+\begin{itemize}
+    \item \textbf{Data sensitivity:} client, driver and pricing records must be protected by authentication and access control.
+    \item \textbf{Reliability:} transport logs must be validated at entry and stored consistently in a central database.
+    \item \textbf{Reproducibility:} the application, its servers and its network rules must be deployable in the same way every time, without manual configuration.
+    \item \textbf{Consistency of delivery:} backend, frontend and infrastructure evolve together and must be built, tested and checked by the same automated pipeline.
+\end{itemize}
+
+\input{figures/fig1-2}
+
+%------------------------------------------------
+\section{Objectives of the Project}
+
+The general objective is to build a web application for the management of clients, drivers and transport logs, and to deliver it through a pipeline in which security checks and infrastructure automation are part of the normal workflow. The objectives are grouped as follows.
+
+\textbf{Development objectives.} Build a full-stack application with a Spring Boot 3.5.6 backend (Java 21) and a React 19 frontend using MUI 7 and React Router 7; expose a REST API documented with OpenAPI; persist data in PostgreSQL 16 through JPA/Hibernate; and write automated unit and integration tests with JUnit 5.
+
+\textbf{Security objectives.} Authenticate users with JSON Web Tokens and Spring Security; validate inputs; keep secrets out of the source code; and run secret detection (Gitleaks), static analysis (Semgrep), dependency analysis (OWASP Dependency-Check) and container-image scanning (Trivy) in continuous integration.
+
+\textbf{Deployment objectives.} Package the services with Docker and Docker Compose; provision the cloud infrastructure with Terraform and configure the servers with Ansible; and automate build, test and delivery with GitHub Actions.
+
+%------------------------------------------------
+\section{Scope and Limitations}
+
+The project covers the creation, consultation, update and deletion of clients, drivers and transport logs, authentication with JWT, the React user interface, the PostgreSQL schema and its validation rules, container packaging, infrastructure as code, and the continuous-integration pipeline with its security scans (Table~\ref{tab:scope}). Continuous delivery is only partly automated: the frontend delivery workflow is currently a placeholder, and the backend delivery workflow connects to the server over SSH to pull and start the new images with Docker Compose. The Ansible playbooks, which configure the servers and deploy the containers, were checked for syntax but were not run against real servers during the final revision of the code, and no dynamic application security testing was performed.
+
+Monitoring is limited. An Ansible role deploys the Prometheus node exporter on the servers, so that basic host metrics are available; complete monitoring and alerting dashboards, however, are out of scope. GPS tracking and geolocation, a mobile application, analytics dashboards, Kubernetes orchestration and multi-cloud deployment are also excluded.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\linewidth}{|l|X|X|}
+\hline
+\textbf{Category} & \textbf{In scope} & \textbf{Out of scope} \\
+\hline
+Core features & CRUD for clients, drivers and transport logs; JWT authentication & GPS tracking, analytics, mobile application \\
+\hline
+Security & Secret, SAST, dependency and image scans in CI & Runtime intrusion detection, zero-trust model \\
+\hline
+Deployment & Docker Compose, Terraform, Ansible, partial CD & Kubernetes, multi-cloud, full monitoring and alerting dashboards \\
+\hline
+Observability & Basic host metrics (node exporter) & Dashboards and alerting \\
+\hline
+\end{tabularx}
+\caption{Project scope overview}
+\label{tab:scope}
+\end{table}
+
+%------------------------------------------------
+\section{Technical Architecture Overview}
+
+The system follows a three-tier architecture. The frontend is a React single-page application that calls the backend through Axios. The backend is a Spring Boot REST API secured with Spring Security and JWT. The data is stored in a PostgreSQL database. The infrastructure is described with Terraform and configured with Ansible, and GitHub Actions workflows build, scan and deploy the components. This architecture is detailed in Chapter~\ref{chap:design}.
+
+\input{figures/fig1-3}
+
+%------------------------------------------------
+\section{Project Planning}
+\label{sec:planning}
+
+The internship lasted one month and was carried out by a team of two students. Since the time was short, we organized the work in four weeks and overlapped the phases where the two members could work in parallel. Figure~\ref{fig:gantt} shows the phases we distinguished. The repository history spans a longer period than the internship itself, since the project was started and extended outside the internship window; for this reason we do not attach calendar dates to the chart and express it in weeks. The phases are inferred from the topics of the commits: analysis and project setup, backend development, frontend development, continuous integration and security scans, infrastructure with Terraform and Ansible, and report writing.
+
+\begin{figure}[H]
+\centering
+\begin{adjustbox}{max width=\linewidth}
+\begin{ganttchart}[
+    hgrid, vgrid={dotted},
+    x unit=1.4cm, y unit chart=0.7cm, y unit title=0.6cm,
+    title height=1, bar height=0.5,
+    bar/.append style={fill=Eblue!70},
+    title label font=\sffamily\small, bar label font=\sffamily\small,
+    group label font=\sffamily\small\bfseries
+]{1}{4}
+\gantttitle{Week 1}{1}
+\gantttitle{Week 2}{1}
+\gantttitle{Week 3}{1}
+\gantttitle{Week 4}{1} \\
+\ganttbar{Analysis and setup}{1}{1} \\
+\ganttbar{Backend (API, JWT, tests)}{1}{2} \\
+\ganttbar{Frontend (React)}{2}{3} \\
+\ganttbar{CI and security scans}{2}{3} \\
+\ganttbar{Terraform and Ansible}{3}{4} \\
+\ganttbar{Report writing}{3}{4}
+\end{ganttchart}
+\end{adjustbox}
+\caption{Project phases over the four weeks of the internship (indicative)}
+\label{fig:gantt}
+\end{figure}
+
+\needsinput{Confirm the split of the work into phases and weeks shown in Figure~\ref{fig:gantt}, the exact start and end dates of the internship, and the working method actually followed (Scrum, Kanban, weekly meetings with the supervisor?). The Gantt chart is an inference from the commit topics, not a record.}
+
+\subsection*{Team roles}
+The project was carried out by Ait Kadir Abdelhak and Oubella Ismail under the academic supervision of Mrs.\ Latifa Makhlouf.
+\needsinput{State who did what. For example, which author developed the backend, the frontend, the CI pipelines, the Terraform and Ansible code, and who wrote which chapters. The repository shows commits from both authors on the backend, frontend and workflow branches, but the exact split is only known to the authors.}
+
+%------------------------------------------------
+\section{Report Structure}
+
+The remainder of this document is organized as follows.
+Chapter~\ref{chap:sota} reviews the state of the art on DevSecOps, its practices and its tools.
+Chapter~\ref{chap:requirements} analyzes the requirements of the application and of the delivery pipeline.
+Chapter~\ref{chap:design} presents the design: architecture, data model, security mechanisms and infrastructure.
+Chapter~\ref{chap:implementation} describes the implementation of the backend, the frontend, the containers, the infrastructure and the pipelines.
+Chapter~\ref{chap:results} presents and evaluates the results.
+Chapter~\ref{chap:challenges} reports the challenges encountered and the solutions adopted.
+Chapter~\ref{chap:discussion} discusses the limits of the work.
+Chapter~\ref{chap:conclusion} concludes and proposes future work.
+The bibliography and the appendices close the report.
+
+\input{figures/fig1-4}

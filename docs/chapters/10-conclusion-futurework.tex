@@ -1,0 +1,37 @@
+%========================================================================================
+%   Chapter 10 --- Conclusion and Future Work
+%========================================================================================
+\chapter{Conclusion and Future Work}
+\label{chap:conclusion}
+
+\section{Summary of the Work}
+
+The objective of the internship was to build a delivery-tracking web application for a small transport company and to surround it with a DevSecOps pipeline. We delivered a Spring Boot 3.5.6 REST API on Java 21 with JWT authentication, a React 19 and MUI 7 frontend, and a PostgreSQL 16 database, covering the management of clients, drivers and transport logs. Around the application we built Docker images and Compose files, a Terraform module for DigitalOcean, Ansible roles for server configuration, and GitHub Actions workflows that combine build, test and several security analyses.
+
+The evidence collected at the end of the internship (Chapter~\ref{chap:results}) shows that the backend passes 82 tests with 77.1\,\% line coverage, that Semgrep reports no finding on the application code, that unauthenticated access is rejected with 401, and that both container images run as non-root users. The same evidence shows what is missing, and Chapter~\ref{chap:discussion} lists it: a single administrator account, report-only dependency auditing, a partial continuous delivery, Terraform and Ansible code not yet validated end to end, and no monitoring beyond a node exporter. A review of our own implementation in the last days also uncovered and corrected a number of defects (Chapter~\ref{chap:challenges}).
+
+\section{Technical Contributions}
+
+The following artifacts exist in the repository and can be inspected. The Terraform module describes a bastion, a frontend and a backend server, firewalls, a managed PostgreSQL database and DNS records, with its state in a remote backend; Rego policies checked by Conftest complement tfsec and Checkov. The CI security workflows are reusable and publish SARIF reports to the GitHub Security tab. Twelve Ansible roles cover system hardening, firewall, SSH, Docker, Nginx with TLS, the application and a node exporter, and an inventory generator derives the hosts from Terraform outputs. The container images use multi-stage builds, run without root privileges, and are 353\,MB (backend) and 70.1\,MB (frontend). The test suite combines unit, repository and controller tests with H2-based integration tests.
+
+\section{Future Work}
+
+We order the following work by priority, derived from the limitations of Chapter~\ref{chap:discussion}.
+
+\subsection{Short Term: Application Security}
+The first step is to replace the fixed account with a users table, hashed passwords and roles (for example administrator and operator), enforced with method-level authorization. In parallel, the token handling should change: either an HttpOnly, SameSite cookie, or short-lived access tokens with refresh tokens that can be revoked. Component tests for the main pages (login, lists, transport-log form) should replace the placeholder tests, and the example secret should be removed from \texttt{.env.example} and from the future history. The public health details should be restricted.
+
+\subsection{Short Term: Pipeline}
+\texttt{npm audit} and OWASP Dependency-Check should become blocking gates for critical findings. This requires upgrading or replacing \texttt{react-scripts}, which is no longer actively maintained; migrating the build to Vite is the most direct option. A dynamic scan with OWASP ZAP against a staging deployment should be added to the pipeline. Continuous delivery should be completed: a real frontend deployment job, promotion of an image from staging to production using an explicit tag, and an approval step for production. The Terraform workflow must first be made to succeed on the remote repository, so that plan, policy checks and drift detection can be observed running.
+
+\subsection{Medium Term: Operations}
+The Ansible playbooks should be run end to end against staging servers, including the migration to the service account, and their idempotence checked by a second run. Once this is validated, observability should be extended with Prometheus and Grafana dashboards, alert rules, and centralized logs; secrets should move from vault files to a secrets manager. A second backend instance behind a load balancer and a database with a standby would address the single-machine limitation.
+
+\subsection{Long Term}
+If the load or the number of services grew, a move to Kubernetes, with a GitOps tool for deployment and possibly a service mesh for mutual TLS, could be considered. We regard this as a long-term option only: at the present size, the operational cost would exceed the benefit, and the preceding steps are prerequisites.
+
+\section{Personal Conclusion}
+
+This internship was our first experience of delivering an application together with the infrastructure and the checks that surround it. Writing the code was the smaller part of the work; most of the time went into making the pieces cooperate and into discovering, by testing them, that some of our own controls did not do what we believed. We leave the project with a working base, a clear list of what remains unproven, and a more careful habit: to verify a security measure by trying to defeat it.
+
+\needsinput{Optional personal acknowledgement or professional lesson that only the authors can write (for example what each student would do differently).}

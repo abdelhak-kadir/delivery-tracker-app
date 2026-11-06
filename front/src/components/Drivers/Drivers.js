@@ -1,5 +1,5 @@
 // src/components/Drivers/Drivers.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -91,12 +91,12 @@ const Drivers = () => {
     }
   ];
 
-  // Fetch drivers
-  useEffect(() => {
-    fetchDrivers();
-  }, [page, size]);
+  // Show notification
+  const showNotification = useCallback((message, severity = 'success') => {
+    setNotification({ open: true, message, severity });
+  }, []);
 
-  const fetchDrivers = async () => {
+  const fetchDrivers = useCallback(async () => {
     try {
       setLoading(true);
       const response = await driversAPI.getAll(page, size);
@@ -108,7 +108,11 @@ const Drivers = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, size, showNotification]);
+
+  useEffect(() => {
+    fetchDrivers();
+  }, [fetchDrivers]);
 
   // Dialog handlers
   const handleCreate = () => {
@@ -196,11 +200,6 @@ const Drivers = () => {
     if (formErrors[field]) {
       setFormErrors({ ...formErrors, [field]: null });
     }
-  };
-
-  // Show notification
-  const showNotification = (message, severity = 'success') => {
-    setNotification({ open: true, message, severity });
   };
 
   return (

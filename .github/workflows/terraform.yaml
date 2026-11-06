@@ -1,0 +1,238 @@
+name: Terraform Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "staging or production"
+        required: true
+        default: "staging"
+        type: choice
+        options: [staging, production]
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'
+  schedule:
+    - cron: "0 6 * * 1"   # every Monday 06:00 UTC
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Security Scan + Plan
+    # Scheduled runs are drift detection only (see drift-detect); never plan/apply from them.
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}  # for Terraform Cloud backend
+
+      # --- IaC Security Scanners ---
+      - name: tfsec (Terraform SAST)
+        uses: aquasecurity/tfsec-action@v1
+
+      - name: Checkov (Policy/Best Practices)
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: infra
+          framework: terraform
+
+      - name: Terraform Init
+        run: terraform init
+
+      # FIXED: Shell injection vulnerability - use environment variables
+      - name: Select Workspace
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
+        run: |
+          # Validate environment name (defense in depth, even though we use choice input)
+          if [[ ! "$ENVIRONMENT" =~ ^(staging|production)$ ]]; then
+            echo "❌ Invalid environment: $ENVIRONMENT. Must be 'staging' or 'production'"
+            exit 1
+          fi
+          
+          # Check if workspace exists and select or create it
+          if terraform workspace list | grep -q "^[[:space:]]*$ENVIRONMENT[[:space:]]*$"; then
+            echo "✅ Selecting existing workspace: $ENVIRONMENT"
+            terraform workspace select "$ENVIRONMENT"
+          else
+            echo "📝 Creating new workspace: $ENVIRONMENT"
+            terraform workspace new "$ENVIRONMENT"
+          fi
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan (save JSON for OPA)
+        run: |
+          terraform plan -out=tfplan
+          terraform show -json tfplan > tfplan.json
+
+      # --- OPA / Conftest: enforce custom policies ---
+      - name: Install Conftest
+        run: |
+          curl -L https://github.com/open-policy-agent/conftest/releases/download/v0.55.0/conftest_0.55.0_Linux_x86_64.tar.gz \
+            | tar xz && sudo mv conftest /usr/local/bin/
+
+      - name: Run Conftest on Terraform plan
+        run: conftest test --policy policy --namespace terraform.security tfplan.json
+
+      # FIXED: Use environment variable in artifact name
+      - name: Upload Plan Artifact
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ env.ENVIRONMENT }}
+          path: infra/tfplan
+
+  apply:
+    name: Apply
+    runs-on: ubuntu-latest
+    needs: plan
+    # Apply only on push to main or a manual dispatch from main; never on schedule.
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    defaults:
+      run:
+        working-directory: infra
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      # FIXED: Use environment variable in artifact name
+      - name: Download Plan
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ env.ENVIRONMENT }}
+          path: infra
+
+      - name: Terraform Init
+        run: terraform init
+
+      # FIXED: Shell injection vulnerability - use environment variables
+      - name: Select Workspace
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
+        run: |
+          # Validate environment name
+          if [[ ! "$ENVIRONMENT" =~ ^(staging|production)$ ]]; then
+            echo "❌ Invalid environment: $ENVIRONMENT"
+            exit 1
+          fi
+          
+          echo "✅ Selecting workspace: $ENVIRONMENT"
+          terraform workspace select "$ENVIRONMENT"
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+
+  drift-detect:
+    name: Drift Detection
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'  # Only run on scheduled events
+    defaults:
+      run:
+        working-directory: infra
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      # FIXED: No shell injection here, but improved for consistency
+      - name: Select Workspace (staging)
+        env:
+          ENVIRONMENT: "staging"
+        run: |
+          if terraform workspace list | grep -q "^[[:space:]]*$ENVIRONMENT[[:space:]]*$"; then
+            echo "✅ Selecting existing workspace: $ENVIRONMENT"
+            terraform workspace select "$ENVIRONMENT"
+          else
+            echo "📝 Creating new workspace: $ENVIRONMENT"
+            terraform workspace new "$ENVIRONMENT"
+          fi
+
+      - name: Detect Drift (staging)
+        id: drift
+        run: |
+          set +e
+          terraform plan -detailed-exitcode -no-color
+          code=$?
+          echo "exit_code=$code" >> $GITHUB_OUTPUT
+          exit 0
+
+      - name: Create Issue on Drift (staging)
+        if: steps.drift.outputs.exit_code == '2'
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "🚨 Infrastructure Drift Detected in Staging"
+          content-filepath: .github/drift-template.md
+          labels: |
+            drift
+            infra
+            staging
+            priority:medium
+
+      # BONUS: Add production drift detection
+      - name: Select Workspace (production)
+        id: ws-prod
+        env:
+          ENVIRONMENT: "production"
+        run: |
+          if terraform workspace list | grep -q "^[[:space:]]*$ENVIRONMENT[[:space:]]*$"; then
+            echo "✅ Selecting existing workspace: $ENVIRONMENT"
+            terraform workspace select "$ENVIRONMENT"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️  Production workspace does not exist, skipping drift detection"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Detect Drift (production)
+        id: drift-prod
+        if: steps.ws-prod.outputs.exists == 'true'
+        continue-on-error: true
+        run: |
+          set +e
+          terraform plan -detailed-exitcode -no-color
+          code=$?
+          echo "exit_code=$code" >> $GITHUB_OUTPUT
+          exit 0
+
+      - name: Create Issue on Drift (production)
+        if: steps.drift-prod.outputs.exit_code == '2'
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "🔥 CRITICAL: Infrastructure Drift Detected in Production"
+          content-filepath: .github/drift-template.md
+          labels: |
+            drift
+            infra
+            production
+            priority:critical

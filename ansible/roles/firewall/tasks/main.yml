@@ -1,0 +1,98 @@
+---
+# ------------------------------
+# Pre-task: detect your public IP dynamically
+# ------------------------------
+- name: Detect admin public IP
+  set_fact:
+    admin_public_ip: "{{ lookup('pipe', 'curl -s https://ipinfo.io/ip') | default('') }}"
+  tags: ['firewall', 'detect']
+
+- name: Abort when admin IP detection fails
+  ansible.builtin.fail:
+    msg: "Failed to detect admin public IP; refusing to open SSH access."
+  when: admin_public_ip | trim == ''
+  tags: ['firewall', 'detect']
+
+# ------------------------------
+# Install & configure firewall
+# ------------------------------
+- name: Install UFW (Uncomplicated Firewall)
+  apt:
+    name: ufw
+    state: present
+  tags: ['firewall', 'packages']
+
+- name: Set UFW default policies
+  ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  loop:
+    - { direction: 'incoming', policy: 'deny' }
+    - { direction: 'outgoing', policy: 'allow' }
+  tags: ['firewall', 'defaults']
+
+# ------------------------------
+# Safe default SSH access rules
+# ------------------------------
+
+# ✅ Allow SSH from detected admin IP (dynamic)
+- name: Allow SSH from detected admin workstation
+  ufw:
+    rule: allow
+    port: "{{ security.ssh_port | default(22) }}"
+    proto: tcp
+    from_ip: "{{ admin_public_ip }}/32"
+    comment: "Dynamic SSH access for {{ admin_public_ip }}"
+  tags: ['firewall', 'ssh', 'safety']
+
+# ✅ Allow SSH from private network
+- name: Allow SSH from private VPC subnet
+  ufw:
+    rule: allow
+    port: "{{ security.ssh_port | default(22) }}"
+    proto: tcp
+    from_ip: "10.114.0.0/16"
+    comment: "Allow SSH from internal VPC"
+  tags: ['firewall', 'vpc']
+
+# ✅ Allow HTTP for Let's Encrypt / Nginx
+- name: Allow HTTP (port 80)
+  ufw:
+    rule: allow
+    port: 80
+    proto: tcp
+    comment: "Allow HTTP (Lets Encrypt / Web)"
+  tags: ['firewall', 'http']
+
+# ✅ Allow HTTPS (frontend only)
+- name: Allow HTTPS (frontend only)
+  ufw:
+    rule: allow
+    port: 443
+    proto: tcp
+    comment: "Allow HTTPS"
+  when: "'frontend' in group_names"
+  tags: ['firewall', 'https']
+
+# ------------------------------
+# Optional: Extra dynamic rules
+# ------------------------------
+- name: Configure UFW rules from variables
+  ufw:
+    rule: "{{ item.rule }}"
+    port: "{{ item.port | default(omit) }}"
+    proto: "{{ item.proto | default('any') }}"
+    from_ip: "{{ item.from_ip | default(omit) }}"
+    comment: "{{ item.comment | default('') }}"
+  loop: "{{ firewall_rules | default([]) }}"
+  when: firewall_rules is defined and firewall_rules | length > 0
+  tags: ['firewall', 'rules']
+
+# ------------------------------
+# Enable UFW safely
+# ------------------------------
+- name: Enable and start UFW
+  ufw:
+    state: enabled
+    logging: 'on'
+  tags: ['firewall', 'enable']

@@ -1,0 +1,36 @@
+# Command: docker compose -p dtevidence -f docker/docker-compose.local.yaml --env-file .env build/up -d ; docker images ; docker run --rm --entrypoint id dtevidence-app
+# Date: 2026-11-05 23:59:36 +0000
+# Machine: macOS 26.7.2, Intel(R) Core(TM) i5-1038NG7 CPU @ 2.00GHz, 16 GB RAM, Docker Desktop
+# Commit: f5a0bd2 (+ uncommitted local changes)
+
+## Build (cold cache, docker compose build --progress=plain): real	28m13.176s  [CAVEAT: network very slow; includes base image pulls (JDK/JRE/node/nginx) and Maven dependency downloads; not representative]
+
+## Images
+REPOSITORY                                                      TAG                       SIZE
+dtevidence-app                                                  latest                    353MB
+dtevidence-front                                                latest                    70.1MB
+postgres                                                        16-alpine                 276MB
+
+## Backend non-root check
+uid=999(app) gid=999(app) groups=999(app)
+USER=app
+## Frontend user
+USER=nginx
+uid=101(nginx) gid=101(nginx) groups=101(nginx)
+
+## Startup
+up -d invoked at epoch 1793923140.9338639
+backend /actuator/health=UP after 27.1s
+frontend http://localhost:3000 HTTP 200 after 14.6s
+
+## docker compose ps
+NAME              IMAGE                COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+postgres-db       postgres:16-alpine   "docker-entrypoint.s…"   db        37 seconds ago   Up 35 seconds (healthy)   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+react-frontend    dtevidence-front     "/docker-entrypoint.…"   front     36 seconds ago   Up 24 seconds (healthy)   0.0.0.0:3000->80/tcp, [::]:3000->80/tcp
+spring-boot-app   dtevidence-app       "java -jar app.jar"      app       37 seconds ago   Up 24 seconds             0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp
+
+## docker stats snapshot
+NAME              CPU %     MEM USAGE / LIMIT
+react-frontend    0.00%     9.379MiB / 14.14GiB
+spring-boot-app   0.62%     375.8MiB / 14.14GiB
+postgres-db       0.06%     56.11MiB / 14.14GiB

@@ -1,0 +1,22 @@
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    ybar, bar width=19pt,
+    width=\linewidth, height=6.8cm,
+    ylabel={Latency (ms)}, ymin=0,
+    symbolic x coords={clients,drivers,trans\_logs,login,{401 (no token)}},
+    xtick=data, x tick label style={font=\footnotesize,align=center},
+    enlarge x limits=0.14, ymax=215,
+    nodes near coords, nodes near coords style={font=\scriptsize,/pgf/number format/fixed,/pgf/number format/fixed zerofill,/pgf/number format/precision=1,yshift=1pt},
+    legend style={at={(0.02,0.97)},anchor=north west,font=\footnotesize},
+    ymajorgrids, grid style={dotted,gray!50}
+]
+\addplot[fill=Eblue!70] coordinates {(clients,10.5)(drivers,10.0)(trans\_logs,27.0)(login,93.6)({401 (no token)},4.0)};
+\addplot[fill=Eorange!80] coordinates {(clients,14.7)(drivers,13.1)(trans\_logs,46.0)(login,172.9)({401 (no token)},4.6)};
+\legend{median,95th percentile}
+\end{axis}
+\end{tikzpicture}
+\caption{Latency of 50 sequential \texttt{curl} requests per endpoint (local Docker stack, authenticated except the last group; source: \texttt{latency-curl.txt}).}
+\label{fig:latency-chart}
+\end{figure}

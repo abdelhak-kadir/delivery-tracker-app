@@ -1,0 +1,48 @@
+- name: Install Nginx and SSL tools
+  apt:
+    name:
+      - nginx
+      - certbot
+      - python3-certbot-nginx
+    state: present
+
+- name: Remove default nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: reload nginx
+
+- name: Configure main nginx.conf
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+  notify: reload nginx
+
+- name: Create SSL snippet
+  template:
+    src: ssl-params.conf.j2
+    dest: /etc/nginx/snippets/ssl-params.conf
+
+- name: Generate DH parameters for SSL
+  command: openssl dhparam -out /etc/ssl/certs/dhparam.pem 2048
+  args:
+    creates: /etc/ssl/certs/dhparam.pem
+
+# The site config (app_frontend role) references the certificate, so the certificate must exist
+# before it is installed. certbot --nginx cannot issue one without a matching server block, so
+# use standalone mode and stop nginx only while certbot binds port 80 (hooks are kept for renewal).
+- name: Obtain SSL certificate with Certbot
+  command: >
+    certbot certonly --standalone -d {{ domains.frontend }}
+    --non-interactive --agree-tos --email {{ ssl.email }}
+    --pre-hook "systemctl stop nginx" --post-hook "systemctl start nginx"
+    {% if ssl_config.staging | default(false) %}--staging{% endif %}
+  args:
+    creates: "/etc/letsencrypt/live/{{ domains.frontend }}/fullchain.pem"
+
+- name: Configure automatic certificate renewal
+  cron:
+    name: "Certbot renewal"
+    minute: "0"
+    hour: "2"
+    job: "/usr/bin/certbot renew --quiet && systemctl reload nginx"

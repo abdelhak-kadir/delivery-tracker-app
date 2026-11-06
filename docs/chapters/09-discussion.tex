@@ -1,0 +1,54 @@
+%========================================================================================
+%   Chapter 9 --- Discussion
+%========================================================================================
+\chapter{Discussion}
+\label{chap:discussion}
+
+This chapter assesses what the project taught us, what the evidence of Chapter~\ref{chap:results} does and does not show, and where the work falls short. We keep the discussion to what the repository and the collected measurements support.
+
+%------------------------------------------------
+\section{Educational Value of the Project}
+
+The one-month internship obliged us to cover the whole path from code to a running service: a REST API with token-based authentication, a single-page frontend, containers, infrastructure declared in Terraform, servers configured with Ansible, and a CI/CD pipeline with several security tools. Working on all layers made the dependencies between them visible. A choice made in the application, such as reading secrets from environment variables, determined how the Ansible templates and the Docker Compose files had to be written; a firewall rule in Terraform determined how Ansible could reach a host at all (Chapter~\ref{chap:challenges}).
+
+We also learned how much of the effort in a pipeline goes into making its checks trustworthy rather than into adding tools. Several of the defects listed in Chapter~\ref{chap:challenges} were in the pipeline itself: gates that could not fail, policies that could not match, and triggers that never fired. Reviewing the implementation against the requirements was as instructive as writing it.
+
+\needsinput{Personal lessons and the organization of the work between the two students (who handled which part, how the work was shared); this is the only place where the authors' own account is required.}
+
+%------------------------------------------------
+\section{Alignment with DevSecOps Practices}
+
+The practices surveyed in Chapter~\ref{chap:sota} are reflected in the project to the following extent. Security checks are placed early in the pipeline: secret scanning (Gitleaks), static analysis (Semgrep), dependency analysis (OWASP Dependency-Check for the backend, \texttt{npm audit} for the frontend), container scanning (Trivy) and, for infrastructure, tfsec, Checkov and Conftest policies written in Rego. Infrastructure and server configuration are versioned with the application, and the pipeline definitions are reusable workflows. The application follows the main recommendations for REST APIs that we retained from the OWASP material: authenticated access to every business endpoint, validated input, uniform error responses, restricted CORS and hashed passwords.
+
+This is an alignment with practices, not a certification. We did not assess the project against ISO~27001 or SOC~2, and nothing in the repository allows such a claim; those frameworks concern organisational controls that a one-month, two-person project does not cover. Likewise, the project does not measure the delivery indicators discussed in Chapter~\ref{chap:sota}, since the deployment history is too short and, as discussed below, partly failing.
+
+%------------------------------------------------
+\section{What the Evidence Shows}
+
+The results of Chapter~\ref{chap:results} give a limited but concrete picture. The backend has 82 tests that pass, with a line coverage of 77.1\,\% measured by JaCoCo; coverage is high for controllers and services and low for the mappers, which are only exercised indirectly. Semgrep reports no finding on the application sources. The security behavior checked by hand matches the design: unauthenticated and invalid requests receive 401, and cross-origin calls are accepted only from the configured origin.
+
+The performance measurements are indicative only. On a developer laptop, with the load generator on the same machine, the median latency of the list endpoints for clients and drivers is about 10\,ms, and a short k6 run with ten virtual users produced no failed request. These values say that the application has no obvious performance defect at this scale; they do not describe production behavior, and we draw no capacity conclusion from them.
+
+On the other side, the evidence also records problems. The scans report vulnerable dependencies (Chapter~\ref{chap:results}), the Gitleaks scan finds an example secret in the history, and the GitHub Actions history shows many failed runs. The history predates the final fixes, so it cannot be used to claim that the corrected workflows are stable.
+
+%------------------------------------------------
+\section{Limitations}
+
+We group the limitations by area. They are the basis of the future work in Chapter~\ref{chap:conclusion}.
+
+\subsection{Application}
+The system has a single administrator account defined by environment variables and one role; there is no users table, no role-based access control and no password change. The JWT is stored in the browser's \texttt{localStorage}, which exposes it to script injection, and there is no refresh token and no revocation: a token stays valid until its 30-minute expiry. The two frontend tests are placeholders, so the user interface is not tested automatically. The health endpoint exposes component details to anyone, because details are shown without authentication.
+
+\subsection{Security Analysis}
+\texttt{npm audit} runs in report-only mode and finds 70 vulnerable packages, including three critical ones. They are mostly transitive dependencies of \texttt{react-scripts}, used at build time, which is why we did not make the gate blocking; this is a trade-off, not a resolution. OWASP Dependency-Check could not be run locally because of the size of the vulnerability database download, and no dynamic testing (DAST) was performed. The Trivy image scans covered operating-system packages only, as the Java library database was not downloaded.
+
+\subsection{Pipeline and Deployment}
+The Terraform workflow never succeeded on the remote repository, and the frontend CI succeeded in only 32\,\% of the observed runs, although these runs predate the fixes of the final revision. Continuous delivery is partial: the frontend CD job is a placeholder, the backend job deploys by connecting over SSH, and CI builds images with a staging tag only, so that a production deployment needs an explicit tag. The Ansible roles and playbooks were checked for syntax but not executed against real servers in this revision; they should be regarded as unvalidated. Vault variables and the database port of the managed cluster remain to be confirmed.
+
+\subsection{Architecture and Operations}
+Each environment uses one virtual machine per tier, so there is no high availability and no zero-downtime deployment. Observability is limited to application logs and a node exporter; there are no dashboards, no alerting and no centralized logs. Finally, the one-month duration limited the depth of every part: breadth was favored over depth, which is visible in the number of areas that are implemented but only partly validated.
+
+%------------------------------------------------
+\section{Concluding Remarks}
+
+The project delivers a working application and a pipeline whose main security controls exist and have been exercised locally, but it does not yet demonstrate a fully automated and verified delivery to servers. We consider this an honest and useful result for a first DevSecOps project: the limits above are known, documented and ordered in the next chapter.

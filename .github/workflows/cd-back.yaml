@@ -1,13 +1,25 @@
-name: CD Backend
+name: CD Deploy
 
 on:
   workflow_run:
-    workflows: ["Backend Security Scans"]
-    types: [completed]
+    workflows: ["Terraform Infrastructure"]
+    types:
+      - completed
 
 jobs:
-  placeholder:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'schedule' }}
     runs-on: ubuntu-latest
+
     steps:
-      - name: CD Placeholder
-        run: echo "CD deploy placeholder"
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.DO_VM_HOST }}
+          username: ${{ secrets.DO_VM_USER }}
+          key: ${{ secrets.DO_VM_SSH_KEY }}
+          script: |
+            cd /app
+            git pull origin main
+            docker compose pull
+            docker compose up -d

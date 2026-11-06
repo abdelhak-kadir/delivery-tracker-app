@@ -1,0 +1,19 @@
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    layer/.style={rectangle,rounded corners,draw=Eblue,fill=Ecyan!10,
+                  minimum width=7cm,minimum height=1cm,align=center,font=\sffamily},
+    arrow/.style={->,>=Stealth,thick,Eblue}
+]
+\node[layer] (dev) {Development Security (Code, CI/CD, Testing)};
+\node[layer,below=0.8cm of dev] (app) {Application Security (Auth, Validation, RBAC)};
+\node[layer,below=0.8cm of app] (infra) {Infrastructure Security (Docker, IaC, Secrets)};
+\node[layer,below=0.8cm of infra,fill=Eblue!5] (ops) {Operational Security (Monitoring, Incident Response)};
+
+\draw[arrow] (dev) -- (app);
+\draw[arrow] (app) -- (infra);
+\draw[arrow] (infra) -- (ops);
+
+\end{tikzpicture}
+\caption{Layered DevSecOps security domains in full-stack applications}
+\end{figure}

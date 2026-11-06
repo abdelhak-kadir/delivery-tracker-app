@@ -1,0 +1,39 @@
+\begin{figure}[H]
+\centering
+\begin{adjustbox}{max width=\linewidth}
+\begin{tikzpicture}[>=latex, thick, node distance=2.4cm]
+
+\tikzstyle{stepnode}=[
+  rectangle, draw=Eblue, fill=Ecyan!15,
+  rounded corners=6pt, minimum width=3.2cm, minimum height=1cm,
+  font=\small\bfseries, align=center
+]
+\tikzstyle{secn}=[
+  rectangle, draw=red!70!black, fill=red!10,
+  rounded corners=6pt, minimum width=3.2cm, minimum height=1cm,
+  font=\small, align=center
+]
+
+% --- Main flow ---
+\node[stepnode](login){Login form\\[-1pt]\scriptsize \texttt{POST /auth/login}};
+\node[secn, right=of login](jwt){Token issuance\\[-1pt]\scriptsize \texttt{JwtTokenProvider}};
+\node[stepnode, right=of jwt](store){Token stored\\[-1pt]\scriptsize \texttt{localStorage}};
+\node[secn, right=of store](verify){Token validation\\[-1pt]\scriptsize \texttt{JwtAuthenticationFilter}};
+\node[stepnode, right=of verify](api){Protected\\ API call};
+
+\draw[->, Eblue](login)--node[above,font=\scriptsize]{credentials}(jwt);
+\draw[->, Eblue](jwt)--node[above,font=\scriptsize]{JWT}(store);
+\draw[->, Eblue](store)--node[above,font=\scriptsize]{Bearer header}(verify);
+\draw[->, Eblue](verify)--node[above,font=\scriptsize]{valid}(api);
+
+% --- Controls ---
+\node[secn, below=1.2cm of jwt](spring){\texttt{AuthenticationManager}\\ + BCrypt};
+\node[secn, below=1.2cm of verify](val){\texttt{SecurityConfig}:\\ \texttt{anyRequest().authenticated()}};
+\draw[->, red!70!black](jwt)--(spring);
+\draw[->, red!70!black](verify)--(val);
+
+\end{tikzpicture}
+\end{adjustbox}
+\caption{JWT-based authentication workflow: credentials are verified against the BCrypt-hashed configured user, a signed token with a 30-minute lifetime is returned, kept in \texttt{localStorage} and attached by the Axios interceptor to every request.}
+\label{fig:jwt-flow}
+\end{figure}

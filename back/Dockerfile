@@ -30,8 +30,13 @@
     # Expose Spring Boot's default port
     EXPOSE 8080
     
+    # Create a dedicated non-root user
+    RUN groupadd --system app && useradd --system --gid app --no-create-home app
+
     # Copy the built jar from the first stage
-    COPY --from=build /app/target/*.jar app.jar
+    COPY --from=build --chown=app:app /app/target/*.jar app.jar
+
+    USER app
     
     # Run the Spring Boot app
     ENTRYPOINT ["java", "-jar", "app.jar"]

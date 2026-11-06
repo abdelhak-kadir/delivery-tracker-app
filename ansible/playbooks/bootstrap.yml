@@ -1,0 +1,64 @@
+- name: Bootstrap Infrastructure - Initial Server Setup
+  hosts: all,!ungrouped
+  gather_facts: true
+  become: true
+  serial: "{{ ansible_serial | default(1) }}"
+  vars:
+    ansible_ssh_retries: 3
+
+  pre_tasks:
+    - name: Wait for system to be ready
+      wait_for_connection:
+        connect_timeout: 20
+        sleep: 5
+        delay: 5
+        timeout: 300
+
+    - name: Detect if running as root
+      set_fact:
+        is_initial_setup: "{{ ansible_user == 'root' }}"
+      tags: ['always']
+
+  roles:
+    # --- Phase 1: Create ansible user only if root ---
+    - role: ansible_user
+      tags: ['ansible_user', 'bootstrap']
+      when: is_initial_setup | default(false)
+
+    # --- Phase 2: Run all other roles only if using ansible user ---
+    - role: common
+      tags: ['common', 'bootstrap']
+      when: not is_initial_setup | default(false)
+
+    - role: ssh_hardening
+      tags: ['ssh', 'security', 'bootstrap']
+      when: not is_initial_setup | default(false)
+
+    - role: firewall
+      tags: ['firewall', 'security', 'bootstrap']
+      when: not is_initial_setup | default(false)
+
+    - role: fail2ban
+      tags: ['fail2ban', 'security', 'bootstrap']
+      when:
+        - not is_initial_setup | default(false)
+        - inventory_hostname in groups['bastion']
+
+    # --- Phase 3: container runtime, TLS and monitoring on the application hosts ---
+    - role: docker_runtime
+      tags: ['docker', 'runtime', 'bootstrap']
+      when:
+        - not is_initial_setup | default(false)
+        - inventory_hostname in groups['app_servers']
+
+    - role: nginx_tls
+      tags: ['nginx', 'tls', 'bootstrap']
+      when:
+        - not is_initial_setup | default(false)
+        - inventory_hostname in groups['frontend']
+
+    - role: observability
+      tags: ['observability', 'monitoring', 'bootstrap']
+      when:
+        - not is_initial_setup | default(false)
+        - inventory_hostname in groups['app_servers']

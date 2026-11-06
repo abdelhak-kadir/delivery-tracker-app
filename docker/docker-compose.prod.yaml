@@ -72,9 +72,6 @@ services:
 networks:
   my-app-network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
 
 volumes:
   db_data:

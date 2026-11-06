@@ -95,9 +95,12 @@ jobs:
         working-directory: back
         run: ./mvnw -B -q dependency:go-offline
 
-      # Filesystem scan
+      # Filesystem scan. --offline-scan: never query Maven Central for pom.xml parents
+      # (it rate-limits runners with HTTP 429); poms come from ~/.m2 filled above.
+      # The backend's full Java dependency tree is checked by the image gate below,
+      # which scans the built jar.
       - name: Trivy FS Scan (SARIF report)
-        run: trivy fs --exit-code 0 --severity HIGH,CRITICAL --format sarif -o trivy-fs.sarif .
+        run: trivy fs --offline-scan --exit-code 0 --severity HIGH,CRITICAL --format sarif -o trivy-fs.sarif .
 
       - name: Upload FS SARIF
         uses: github/codeql-action/upload-sarif@v3
@@ -108,7 +111,7 @@ jobs:
           category: trivy-fs
 
       - name: Trivy FS Gate (fail on CRITICAL)
-        run: trivy fs --exit-code 1 --severity CRITICAL --ignore-unfixed .
+        run: trivy fs --offline-scan --exit-code 1 --severity CRITICAL --ignore-unfixed .
 
       # Docker login (separated from scanning)
       - name: Log in to GitHub Container Registry

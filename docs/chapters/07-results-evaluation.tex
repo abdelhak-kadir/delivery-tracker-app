@@ -82,7 +82,7 @@ The command \texttt{./mvnw clean verify} ran 82 tests in 13 classes with no fail
 \centering
 \fbox{\includegraphics[width=0.40\linewidth]{images/screens/swagger-ui-ok.png}}\hfill
 \fbox{\includegraphics[width=0.54\linewidth]{images/screens/jacoco-report.png}}
-\caption{Left: Swagger UI listing the endpoints, served by the backend without authentication (local run, 7 November 2026). Right: JaCoCo HTML report of the backend (instruction and branch coverage by package).}\label{fig:swagger}\label{fig:jacoco}
+\caption{Left: Swagger UI listing the endpoints, served by the backend without authentication (local run). Right: JaCoCo HTML report of the backend (instruction and branch coverage by package).}\label{fig:swagger}\label{fig:jacoco}
 \end{figure}
 
 \subsection{Frontend Tests}
@@ -101,7 +101,7 @@ The backend container runs as user \texttt{app} (uid 999) and the frontend conta
 \toprule
 \textbf{Scanner} & \textbf{Result} \\
 \midrule
-Gitleaks (143 commits) & 1 finding: a generic API key in \texttt{.env.example}, line~7, committed in 2025. \\
+Gitleaks (143 commits) & 1 finding: a generic API key in \texttt{.env.example}, line~7, from an early commit. \\
 Semgrep (\texttt{--config auto}, 351 rules, 67 files) & 0 findings in \texttt{back/src} and \texttt{front/src}. \\
 \texttt{npm audit} (1\,384 dependencies) & 70 vulnerabilities: 3 critical, 36 high, 13 moderate, 18 low. \\
 Trivy 0.56.2, file system & 3 critical and 106 high entries (critical: \texttt{proxy-addr}, \texttt{shell-quote}, \texttt{websocket-driver}, all frontend); backend: 2 high for \texttt{postgresql} 42.7.7 and 2 for \texttt{spring-boot-starter-actuator} 3.5.6; 16 critical Terraform misconfigurations. \\
@@ -179,12 +179,12 @@ Generate OpenAPI Docs & 1 & 0 (0\,\%) & single failed run \\
 \end{tabularx}
 \end{table}
 
-The backend pipeline is stable (14 of 18 runs) but the frontend pipeline succeeded in only 8 of 25, and the two Terraform workflows never succeeded on the remote, so the infrastructure code has not been validated by this pipeline. The 100\,\% rates of the CD and security-wrapper workflows must not be read as proof of deployment: their jobs last two to four seconds and the CD Backend job is named \texttt{placeholder}. Deployment is performed by the Ansible playbooks (Figure~\ref{fig:ansible}). In the latest successful runs (12~October 2025, branch \texttt{main}), the backend run took 383~s (build 57~s, test 48~s, Docker image 140~s, security gate 132~s) and the frontend run 246~s (build and test 69~s, Docker image 108~s, security gate 64~s). The security gate of these runs predates the correction that makes the Trivy step fail on critical findings; it reported but did not block.
+The backend pipeline is stable (14 of 18 runs) but the frontend pipeline succeeded in only 8 of 25, and the two Terraform workflows never succeeded on the remote, so the infrastructure code has not been validated by this pipeline. The 100\,\% rates of the CD and security-wrapper workflows must not be read as proof of deployment: their jobs last two to four seconds and the CD Backend job is named \texttt{placeholder}. Deployment is performed by the Ansible playbooks (Figure~\ref{fig:ansible}). In the latest successful runs on \texttt{main}, the backend run took 383~s (build 57~s, test 48~s, Docker image 140~s, security gate 132~s) and the frontend run 246~s (build and test 69~s, Docker image 108~s, security gate 64~s). The security gate of these runs predates the correction that makes the Trivy step fail on critical findings; it reported but did not block.
 
 \begin{figure}[htbp]
 \centering
 \fbox{\includegraphics[width=0.95\linewidth]{images/screens/ghactions.png}}
-\caption{GitHub Actions run summary of the CI Backend workflow on pull request \#11 (build, test, image push and security gate, all successful; 6 November 2026).}\label{fig:ghactions}
+\caption{GitHub Actions run summary of the CI Backend workflow on pull request \#11 (build, test, image push and security gate, all successful).}\label{fig:ghactions}
 \end{figure}
 
 \begin{figure}[htbp]

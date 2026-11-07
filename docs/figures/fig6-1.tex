@@ -1,5 +1,6 @@
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
+\begin{adjustbox}{max height=4.2cm}
 \begin{tikzpicture}[node distance=1.6cm, >=latex, thick]
 
 \tikzstyle{container}=[
@@ -28,6 +29,7 @@
       inner sep=0.5cm, label={[Eblue,font=\small]below:Compose network \texttt{my-app-network} (bridge)}] {};
 
 \end{tikzpicture}
+\end{adjustbox}
 \caption{Services of the local Docker Compose stack (\texttt{docker/docker-compose.local.yaml}).}
 \label{fig:docker-arch}
 \end{figure}

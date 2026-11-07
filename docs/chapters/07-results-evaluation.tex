@@ -8,9 +8,9 @@ This chapter evaluates the system against the requirements of Chapter~\ref{chap:
 %------------------------------------------------
 \section{Evaluation Setup}\label{sec:res-setup-note}
 
-All local measurements were collected on 5--6 November 2026 on a single developer laptop (macOS 26.7.2, Intel Core i5-1038NG7, 16~GB of RAM, Docker Desktop), on commit \texttt{f5a0bd2}, with OpenJDK~21, Node.js~20.19.6, PostgreSQL~16 and Trivy~0.56.2. ``Local'' means the Docker Compose stack of \texttt{docker/docker-compose.local.yaml} running on the same machine as the load generator and the \texttt{curl} client, with 50 clients, 50 drivers and 50 transport logs of generated test data. No network, reverse proxy or remote database sits between client and server, so the latencies below are a lower bound and not production figures.
+All local measurements were collected on a single developer laptop (macOS 26.7.2, Intel Core i5-1038NG7, 16~GB of RAM, Docker Desktop), on commit \texttt{f5a0bd2}, with OpenJDK~21, Node.js~20.19.6, PostgreSQL~16 and Trivy~0.56.2. ``Local'' means the Docker Compose stack of \texttt{docker/docker-compose.local.yaml} running on the same machine as the load generator and the \texttt{curl} client, with 50 clients, 50 drivers and 50 transport logs of generated test data. No network, reverse proxy or remote database sits between client and server, so the latencies below are a lower bound and not production figures.
 
-The CI figures of Section~\ref{sec:res-ci} come from 99 workflow runs of the \emph{remote} branches between 24~September and 15~December 2025. They predate the fixes applied on 5~November 2026 (secured client endpoints, hardened containers, corrected workflow paths, OPA policies) and describe the pipeline as it was, not as it is now.
+The CI figures of Section~\ref{sec:res-ci} come from 99 workflow runs of the \emph{remote} branches. They predate the final fixes (secured client endpoints, hardened containers, corrected workflow paths, OPA policies) and describe the pipeline as it was, not as it is now.
 
 %------------------------------------------------
 \section{Functional Validation}

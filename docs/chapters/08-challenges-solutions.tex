@@ -21,8 +21,6 @@ This chapter records the difficulties we met and how we resolved them, in two gr
 %------------------------------------------------
 \section{Issues Found by Reviewing the Implementation}
 
-During the last days we compared what the repository did with what the report claimed and the requirements demanded. All defects below were corrected in the final revision; they show the gap between a pipeline that appears to work and one that enforces its policy.
-
 \subsection{Application Security}
 \begin{description}
   \item[Public client data.] \texttt{GET /api/v1/clients/**} was \texttt{permitAll}, a rule added to ease frontend development and never removed; it was deleted and unauthenticated requests now return 401.

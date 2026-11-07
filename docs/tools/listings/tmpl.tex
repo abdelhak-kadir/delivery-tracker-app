@@ -301,7 +301,7 @@ The workflows of \texttt{.github/workflows/} implement the pipeline of Figure~\r
 
 \subsection{Security Workflows}
 
-The two reusable workflows are triggered with \texttt{workflow\_call} and receive the image tag as input. Their permissions are limited to reading the repository and the packages and to writing security events. The backend workflow chains the following steps; the gating steps are reproduced in Listing~\ref{lst:wf-sec} in the appendices.
+The two reusable workflows are triggered with \texttt{workflow\_call} and receive the image tag as input. Their permissions are limited to reading the repository and the packages and to writing security events. The backend workflow chains the following steps.
 \begin{itemize}
   \item \textbf{Gitleaks} scans the full history (the checkout uses \texttt{fetch-depth: 0}) for committed secrets.
   \item \textbf{OWASP Dependency-Check} analyzes the Maven dependencies in HTML and SARIF formats; the SARIF run is configured with \texttt{--failOnCVSS 7}. Reports are stored as workflow artifacts, and the SARIF file is uploaded to GitHub code scanning.

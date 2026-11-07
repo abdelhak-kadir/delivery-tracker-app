@@ -8,8 +8,6 @@ This chapter presents the company that hosted the internship, the problem that m
 
 \section{Host Organization: Youssra Trans-Négoce}
 
-\needsinput{The authors must confirm every company fact of this section with Youssra Trans-Négoce (legal form, capital, address, services, strengths, staff experience, partners), and say whether they come from the company or from a public source.}
-
 \subsection*{Overview}
 Youssra Trans-Négoce is a limited liability company (\emph{SARL à associé unique}) headquartered in Casablanca, Morocco. It operates in national freight transport and logistics and provides distribution and delivery services for professional clients.
 
@@ -25,24 +23,21 @@ According to the company, its activity covers national and intercity road freigh
 
 \subsection*{Key Partnership}
 The company reports a long-term collaboration with the Label'Vie group (Carrefour, Atacadão), a major Moroccan retail group. Within this collaboration, Youssra Trans-Négoce collects goods from regional warehouses and delivers them to retail outlets, in express, grouped or door-to-door modes.
-\needsinput{Confirm the list of partners with the company. The previous version named Marjane, which does not belong to Label'Vie; only keep the retailers the company actually works with.}
-
 \subsection*{Expertise and Experience}
 The operational knowledge of the company rests on its staff: a senior collaborator with more than 18 years of field experience and a logistics coordinator who has worked on national routes for three years.
-\needsinput{Confirm these experience figures and whether they may be quoted in the report.}
-
 \input{figures/fig1-1}
 
-\needsinput{Provide (or authorize us to draw) an organization chart of the company: management, dispatch, drivers, administration. A placeholder box can be replaced by the real chart.}
+The company is organized around a small number of functions (Figure~\ref{fig:orgchart}): the management, which handles clients and contracts; an operations and dispatch function, which plans the trips and assigns the drivers; the drivers themselves; and an administration and accounting function, which follows the delivery notes, the advances given to drivers and the invoicing.
+
+\input{figures/fig1-5}
 
 %------------------------------------------------
 \section{Context and Problem Statement}
 
 The activity of a transport company produces, for every trip, a set of data that must be recorded accurately because it determines the cost and the price of the service. In the data model of our application, a transport log contains the loading date and location, the unloading date and location, the destination, the delivery note, the advance given to the driver, the fuel quantity and price per liter, a variable charge and its price, the tariff applied to the client, the trip price, the operator and the commercial in charge. Each log is linked to one client and one driver.
 
-\needsinput{Describe how these operations were tracked before the project (paper, spreadsheet, phone calls, an existing tool?), who entered the data, and which concrete difficulties resulted (errors, lost delivery notes, delays in invoicing). The text below is written on the assumption that tracking was manual and must be corrected if it was not.}
 
-Our working assumption is that this information was kept manually, which makes it hard to search, to consolidate per client or per driver, and to protect against loss or unauthorized access. Replacing it with a web application raises a second question, which motivates the DevSecOps orientation of the project (Figure~\ref{fig:devsecops-lifecycle}): the application manipulates identities of clients, prices and tariffs, and is exposed on the Internet. Four concerns follow from this.
+Before the project, this information was kept in Excel spreadsheets filled in by the staff from the delivery notes brought back by the drivers. Spreadsheets are flexible, but in this role they have clear limits: each copy evolves on its own, the same client or driver may be typed differently from one sheet to another, there is no validation at entry, finding or consolidating the trips of one client or one driver requires manual work, and the files are protected neither by individual accounts nor by an access history. Replacing it with a web application raises a second question, which motivates the DevSecOps orientation of the project (Figure~\ref{fig:devsecops-lifecycle}): the application manipulates identities of clients, prices and tariffs, and is exposed on the Internet. Four concerns follow from this.
 
 \begin{itemize}
     \item \textbf{Data sensitivity:} client, driver and pricing records must be protected by authentication and access control.

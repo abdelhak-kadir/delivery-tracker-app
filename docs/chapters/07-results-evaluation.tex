@@ -37,10 +37,9 @@ Figure~\ref{fig:transport-form} shows the creation dialog of a transport log aft
 
 \subsection{API Documentation}
 
-The Swagger UI is expected to be shown in Figure~\ref{fig:swagger}. The capture produced during the evidence campaign (\texttt{swagger-ui.png}) displays the error ``Failed to load remote configuration'' and was therefore discarded: it cannot support the requirement FR-13. The health endpoint, in contrast, was verified (Section~\ref{sec:res-security}); the OpenAPI document itself was not inspected in this campaign, and the remote workflow that generates it failed in its only run (Table~\ref{tab:ci-rates}).
+The first capture of the Swagger UI, taken during the evidence campaign, displayed the error ``Failed to load remote configuration''. The cause was in the application, not in the capture: the security configuration let through only \texttt{/v3/api-docs.yaml}, whereas Swagger UI loads \texttt{/v3/api-docs/swagger-config} and \texttt{/v3/api-docs}, which were answered with 401. After the public paths were widened to \texttt{/v3/api-docs/**} (and an integration test was added for them), the UI loads and lists every endpoint without authentication (Figure~\ref{fig:swagger}), which supports FR-13. The remote workflow that generates a static copy of the documentation failed in its only run (Table~\ref{tab:ci-rates}).
 
-\screenshot[0.85\linewidth]{swagger-ui-ok.png}{Swagger UI listing the endpoints of the API (to be re-captured).}{fig:swagger}
-\needsinput{Re-capture the Swagger UI (\texttt{/swagger-ui/index.html}) showing the endpoint list, and save it as \texttt{swagger-ui-ok.png}; the current \texttt{swagger-ui.png} shows a loading error.}
+\screenshot[0.85\linewidth]{swagger-ui-ok.png}{Swagger UI listing the endpoints of the API, served by the backend without authentication (local run, 7 November 2026).}{fig:swagger}
 
 \subsection{API Behavior}\label{sec:res-api}
 
@@ -61,7 +60,7 @@ FR-7 & Driver: same sequence as for clients; deletion of an unknown id \texttt{4
 FR-8, FR-9 & Transport log referencing an existing client and driver: \texttt{POST} \texttt{201}, \texttt{GET}, \texttt{PUT}, paginated list and \texttt{DELETE} \texttt{200}, then \texttt{404}. & \texttt{api-crud.txt} \\
 FR-10 & \texttt{400} with one message per invalid field (blank name, identity number over 20 characters, 15 missing fields of a transport log); \texttt{404} and \texttt{401} in the same error format. The \texttt{403} case was not exercised. & \texttt{api-crud.txt} \\
 FR-11, FR-12 & Login, dashboard and three management pages displayed (Figures~\ref{fig:login}--\ref{fig:translogs}). The redirection of unauthenticated visitors was not captured. & screenshots \\
-FR-13 & Health endpoint \texttt{UP} without authentication (Figure~\ref{fig:actuator}); Swagger UI not verified. & \texttt{health.json} \\
+FR-13 & Health endpoint \texttt{UP} without authentication (Figure~\ref{fig:actuator}); Swagger UI and OpenAPI description public (Figure~\ref{fig:swagger}, \texttt{SecurityIntegrationTest}). & \texttt{health.json} \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -281,8 +280,6 @@ NFR-7 & server-side pagination & \texttt{page}/\texttt{size}/\texttt{totalPages}
 
 The single k6 request of 577~ms exceeded the 500~ms target; the 95th percentile, which the target implicitly refers to under ``normal load'', stayed well below. No measurement of the browser page load (DevTools) was taken.
 
-\needsinput{Optional: a browser DevTools capture of the page load of the dashboard (\texttt{devtools.png}) if a page-load figure is wanted in this section.}
-
 %------------------------------------------------
 \section{CI/CD Pipeline Results}\label{sec:res-ci}
 
@@ -337,8 +334,7 @@ CI Frontend, \texttt{security-scans / security-gate} & 18445560020 & 64 \\
 
 \screenshot{github-security-tab.png}{Code-scanning alerts of the default branch, retrieved through the GitHub REST API (four Trivy alerts, two open, two fixed).}{fig:ghsecurity}
 
-\screenshot{ansible.png}{Output of the Ansible playbook configuring the servers.}{fig:ansible}
-\needsinput{Screenshot of a real Ansible playbook run against the servers, saved as \texttt{ansible.png}.}
+\screenshot{ansible.png}{Ansible verification run locally: syntax check of both playbooks and task list of \texttt{deploy.yml}. No connection to the servers was made, since the roles have not yet been executed against real hosts.}{fig:ansible}
 
 Figures~\ref{fig:ghactions}, \ref{fig:ghactions-sec} and~\ref{fig:ghsecurity} complement Tables~\ref{tab:ci-rates}, \ref{tab:ci-jobs} and~\ref{tab:scans}.
 
@@ -355,7 +351,7 @@ Table~\ref{tab:synthesis} summarizes the results against the objectives stated i
 \textbf{Objective} & \textbf{Result} & \textbf{Status} \\
 \midrule
 Full-stack application (Spring Boot, React, MUI) & CRUD of clients, drivers and transport logs verified through the API and the interface (Table~\ref{tab:fr-trace}). & achieved \\
-REST API documented with OpenAPI & Documentation configured, but the Swagger capture failed and the OpenAPI workflow failed once. & partial \\
+REST API documented with OpenAPI & Swagger UI and OpenAPI description served without authentication (Figure~\ref{fig:swagger}); the static documentation workflow failed in its only run. & achieved \\
 Persistence in PostgreSQL & Stack ran with PostgreSQL~16; repository tests and CRUD checks pass. & achieved \\
 Automated tests with JUnit~5 & 82 tests pass, 77.1\,\% line coverage; mappers at 8.8\,\% and no real frontend test. & partial \\
 JWT authentication and input validation & 401, 400 and 404 behaviors verified (Table~\ref{tab:sec-api}). & achieved \\

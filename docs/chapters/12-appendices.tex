@@ -81,12 +81,12 @@ POST & \texttt{/api/v1/trans\_logs} & JWT & Create a transport log for an existi
 PUT & \texttt{/api/v1/trans\_logs} & JWT & Update a transport log \\
 DELETE & \texttt{/api/v1/trans\_logs/\{id\}} & JWT & Delete a transport log \\
 GET & \texttt{/actuator/health} & Public & Health of the application, database and disk (details shown) \\
-GET & \texttt{/v3/api-docs.yaml} & Public & OpenAPI description of the API \\
+GET & \texttt{/v3/api-docs}, \texttt{/v3/api-docs.yaml} & Public & OpenAPI description of the API (JSON, YAML) \\
 GET & \texttt{/swagger-ui/index.html} & Public & Swagger UI \\
 \end{longtable}
 }
 
-The Swagger annotation of the three \texttt{GET /\{id\}} operations and of the login operation clears the security requirement in the generated documentation; at run time, only the login, health and documentation endpoints are public and every other request needs a token, as the security configuration ends with \texttt{anyRequest().authenticated()}.
+Only the login operation clears the security requirement in the generated documentation; at run time, only the login, health and documentation endpoints are public and every other request needs a token, as the security configuration ends with \texttt{anyRequest().authenticated()}.
 
 \section{Environment Variables}
 

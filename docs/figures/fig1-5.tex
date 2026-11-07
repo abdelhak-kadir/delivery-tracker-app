@@ -1,0 +1,25 @@
+\begin{figure}[H]
+\centering
+\begin{adjustbox}{max width=\linewidth}
+\begin{tikzpicture}[
+    every node/.style={align=center,font=\sffamily\small},
+    unit/.style={rectangle,rounded corners,draw=Eblue,fill=Ecyan!10,minimum width=3.6cm,minimum height=1.2cm,inner sep=4pt},
+    head/.style={unit,fill=Eblue!15,font=\sffamily\small\bfseries},
+    link/.style={thick,Eblue}
+]
+\node[head] (mgmt) at (0,0) {Management\\[-1pt]{\footnotesize\mdseries clients, contracts}};
+
+\node[unit] (ops)   at (-2.6,-2.4) {Operations \& dispatch\\[-1pt]{\footnotesize trip planning}};
+\node[unit] (admin) at ( 2.6,-2.4) {Administration \& accounting\\[-1pt]{\footnotesize delivery notes, invoicing}};
+
+\node[unit] (drivers) at (-2.6,-4.6) {Drivers};
+
+\draw[link] (mgmt.south) -- ++(0,-0.6) coordinate (bus);
+\draw[link] (ops.north |- bus) -- (admin.north |- bus);
+\foreach \n in {ops,admin} \draw[link] (\n.north |- bus) -- (\n.north);
+\draw[link] (ops.south) -- (drivers.north);
+\end{tikzpicture}
+\end{adjustbox}
+\caption{Simplified functional organization of Youssra Trans-Négoce}
+\label{fig:orgchart}
+\end{figure}

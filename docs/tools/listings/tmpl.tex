@@ -1,6 +1,6 @@
 %========================================================================================
 %   Chapter 5 -- Implementation (merged from the former chapters 5 and 6)
-%   Code listings were removed to shorten the report; excerpts are in the appendices.
+%   Code listings were removed to shorten the report.
 %========================================================================================
 \chapter{Implementation}\label{chap:implementation}
 \label{ch:implementation}
@@ -11,7 +11,7 @@ This chapter describes how the architecture and the pipeline designed in Chapter
 \section{Development Environment and Repository Layout}
 \label{sec:impl-env}
 
-The backend is a Java~21 application built with Maven (wrapper \texttt{mvnw}) on Spring Boot~3.5.16 (3.5.6 at the time of the measurements of Chapter~\ref{chap:results}). The main dependencies are Spring Web, Spring Data JPA with the PostgreSQL driver, Spring Security, Bean Validation, \texttt{jjwt}~0.12.5, Lombok, and \texttt{springdoc-openapi-starter-webmvc-ui}~2.8.9; the Actuator starter exposes the health endpoint, H2 and \texttt{spring-security-test} are used for tests, and the JaCoCo plugin (0.8.12) produces coverage reports. The frontend is a Create React App project using React~19.1, Material~UI~7.3, React Router~7 and Axios. The database is PostgreSQL~16. The whole system lives in a single repository organized by concern (Listing~\ref{lst:app-tree} in the appendices); the directory \texttt{docs/} holds this report.
+The backend is a Java~21 application built with Maven (wrapper \texttt{mvnw}) on Spring Boot~3.5.16 (3.5.6 at the time of the measurements of Chapter~\ref{chap:results}). The main dependencies are Spring Web, Spring Data JPA with the PostgreSQL driver, Spring Security, Bean Validation, \texttt{jjwt}~0.12.5, Lombok, and \texttt{springdoc-openapi-starter-webmvc-ui}~2.8.9; the Actuator starter exposes the health endpoint, H2 and \texttt{spring-security-test} are used for tests, and the JaCoCo plugin (0.8.12) produces coverage reports. The frontend is a Create React App project using React~19.1, Material~UI~7.3, React Router~7 and Axios. The database is PostgreSQL~16. The whole system lives in a single repository organized by concern (\texttt{back/}, \texttt{front/}, \texttt{infra/}, \texttt{ansible/}, \texttt{docker/}, \texttt{.github/workflows/}); the directory \texttt{docs/} holds this report.
 
 Runtime configuration is injected through environment variables, never committed. The file \texttt{.env.example} documents the seven variables the application needs (\texttt{POSTGRES\_DB}, \texttt{POSTGRES\_USER}, \texttt{POSTGRES\_PASSWORD}, \texttt{JWT\_SECRET}, \texttt{APP\_USER\_USERNAME}, \texttt{APP\_USER\_PASSWORD}, \texttt{APP\_CORS\_ALLOWED\_ORIGINS}); developers copy it to a git-ignored \texttt{.env}. Spring configuration is split into a common file, which sets the application name and exposes only the health endpoint, and two profiles: \texttt{local} points the datasource at \texttt{localhost:5432} and lets Hibernate update the schema, while \texttt{docker} defines the application user and token settings from the environment, the datasource being supplied by Compose. The token lifetime is 1\,800\,000~ms (30 minutes) in both. No further profiles exist.
 

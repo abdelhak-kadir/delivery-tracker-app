@@ -8,7 +8,6 @@ import com.delivery_tracker_app.app.dto.v1.transportLog.TransportLogResponse;
 import com.delivery_tracker_app.app.dto.v1.transportLog.UpdateTransportLogRequest;
 import com.delivery_tracker_app.app.service.TransportLogService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -89,7 +88,6 @@ public class TransportLogController {
                  content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "Transport log entry not found", // Assuming service throws ResourceNotFoundException
                  content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    @SecurityRequirements({})
     public ResponseEntity<BaseResponse<TransportLogResponse>> getById(
             @PathVariable
             @Parameter(description = "ID of the transport log entry to retrieve", example = "1") @Min(1) Long id){
@@ -100,7 +98,7 @@ public class TransportLogController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a transport log entry by ID", description = "Deletes a transport log record from the system based on its unique ID.")
-    @ApiResponse(responseCode = "204", description = "Transport log entry deleted successfully (No Content)")
+    @ApiResponse(responseCode = "200", description = "Transport log entry deleted successfully")
     @ApiResponse(responseCode = "400", description = "Invalid transport log ID format",
                  content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "Transport log entry not found", // Assuming service throws ResourceNotFoundException

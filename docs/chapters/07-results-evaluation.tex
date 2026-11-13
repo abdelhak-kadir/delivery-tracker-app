@@ -1,0 +1,235 @@
+%========================================================================================
+%   Chapter 7 -- Results and Evaluation
+%========================================================================================
+\chapter{Results and Evaluation}\label{chap:results}
+
+This chapter evaluates the system against the requirements of Chapter~\ref{chap:requirements} (Tables~\ref{tab:fr} and~\ref{tab:nfr}) and the objectives of Chapter~\ref{chap:context}. Only measured evidence is reported: every number comes from a command run on the code base or from the history of the GitHub Actions workflows, and the raw outputs are kept in the \texttt{docs/evidence/} folder of the repository. Where evidence is missing, the text says so.
+
+%------------------------------------------------
+\section{Evaluation Setup}\label{sec:res-setup-note}
+
+All local measurements were collected on a single developer laptop (macOS 26.7.2, Intel Core i5-1038NG7, 16~GB of RAM, Docker Desktop), on commit \texttt{f5a0bd2}, with OpenJDK~21, Node.js~20.19.6, PostgreSQL~16 and Trivy~0.56.2. ``Local'' means the Docker Compose stack of \texttt{docker/docker-compose.local.yaml} running on the same machine as the load generator and the \texttt{curl} client, with 50 clients, 50 drivers and 50 transport logs of generated test data. No network, reverse proxy or remote database sits between client and server, so the latencies below are a lower bound and not production figures.
+
+The CI figures of Section~\ref{sec:res-ci} come from 99 workflow runs of the \emph{remote} branches. They predate the final fixes (secured client endpoints, hardened containers, corrected workflow paths, OPA policies) and describe the pipeline as it was, not as it is now.
+
+%------------------------------------------------
+\section{Functional Validation}
+
+\subsection{User Interface and API Documentation}
+
+The interface was exercised on the local stack and captured with a headless Chrome at $1440\times900$ pixels. The login page is the only page reachable without a token. Figure~\ref{fig:ui} shows the dashboard with the totals of clients, drivers and transport logs (FR-12; the 50 displayed are the generated test data) and the creation dialog of a transport log after an empty submission: every mandatory field is flagged with its own message and the numeric fields reject non-numeric content, mirroring the server-side validation of Section~\ref{sec:res-api}. The clients, drivers and transport-log pages are similar list screens with a creation button and edit and delete actions per row (FR-4 to FR-9, FR-11) and are not reproduced.
+
+\begin{figure}[H]
+\centering
+\fbox{\includegraphics[width=0.47\linewidth]{images/screens/dashboard.png}}\hfill
+\fbox{\includegraphics[width=0.47\linewidth]{images/screens/transport-form.png}}
+\caption{Left: dashboard with entity totals and latest transport logs. Right: transport log dialog with the validation messages after an empty submission (local stack, headless Chrome).}\label{fig:ui}
+\end{figure}
+
+The first capture of the Swagger UI displayed ``Failed to load remote configuration''. The cause was in the application: the security configuration let through only \texttt{/v3/api-docs.yaml}, whereas the UI loads \texttt{/v3/api-docs/swagger-config} and \texttt{/v3/api-docs}, which were answered with 401. After the public paths were widened to \texttt{/v3/api-docs/**} (with an integration test), the UI lists every endpoint without authentication (Figure~\ref{fig:swagger}), which supports FR-13. The remote workflow that generates a static copy of the documentation failed in its only run (Table~\ref{tab:ci-rates}).
+
+\subsection{API Behavior}\label{sec:res-api}
+
+The API was exercised with an authenticated script (\texttt{api-crud.txt}) and unauthenticated \texttt{curl} calls (\texttt{http-401.txt}) against the local stack. Table~\ref{tab:fr-trace} relates each functional requirement of Table~\ref{tab:fr} to the evidence; FR-14 to FR-16 concern the delivery pipeline and are addressed in Sections~\ref{sec:res-ci} and~\ref{sec:res-synthesis}. All security checks gave the expected answer: missing token, wrong password and invalid bearer token return \texttt{401} with the common JSON error format (the invalid token is logged as ``Invalid JWT token''); the CORS preflight is accepted for the configured origin \texttt{http://localhost:3000} and rejected with \texttt{Invalid CORS request} for \texttt{http://evil.example.com}; responses carry \texttt{X-Content-Type-Options}, \texttt{X-Frame-Options: DENY} and \texttt{Cache-Control: no-store}.
+
+\begin{table}[H]
+\centering\small
+\caption{Traceability of the functional requirements to the evidence}\label{tab:fr-trace}
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{3.3cm}@{}}
+\toprule
+\textbf{FR} & \textbf{Observed result} & \textbf{Evidence} \\
+\midrule
+FR-1, FR-2 & Valid login: \texttt{200} with a JWT; wrong password, no token and invalid token: \texttt{401} JSON error. & \texttt{api-crud.txt}, \texttt{http-401.txt} \\
+FR-3 & Single account from environment variables; covered by the unit tests of the user-details service. & \texttt{backend-tests.txt} \\
+FR-4 to FR-9 & Clients, drivers, transport logs: \texttt{POST} \texttt{201}; \texttt{GET}, \texttt{PUT}, \texttt{DELETE} and paginated list \texttt{200}; \texttt{GET} after deletion and unknown id \texttt{404}. & \texttt{api-crud.txt} \\
+FR-10 & \texttt{400} with one message per invalid field (blank name, identity number over 20 characters, 15 missing fields of a transport log); \texttt{404} and \texttt{401} in the same format. The \texttt{403} case was not exercised. & \texttt{api-crud.txt} \\
+FR-11, FR-12 & Login, dashboard and management pages displayed. The redirection of unauthenticated visitors was not captured. & screenshots \\
+FR-13 & Health endpoint \texttt{UP} without authentication; Swagger UI and OpenAPI description public (Figure~\ref{fig:swagger}, \texttt{SecurityIntegrationTest}). & \texttt{health.json} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The health endpoint answers \texttt{UP} for the database, disk space, ping and SSL components, as required by FR-13. However, \texttt{show-details} is set to \emph{always}, so these component details are visible to anonymous callers; this should be corrected before the service is exposed publicly.
+
+%------------------------------------------------
+\section{Automated Testing}
+
+\subsection{Backend Tests and Coverage}
+
+The command \texttt{./mvnw clean verify} ran 82 tests in 13 classes with no failure, error or skipped test, and ended with \texttt{BUILD SUCCESS} after 54.6~s. The suite combines 27 service tests, 30 controller (web-layer) tests, 12 repository tests, 12 integration tests (the driver module and seven on the security configuration, covering authentication and CORS) and the context-loading test. JaCoCo~0.8.12 measured 77.1\,\% of lines (306 of 397), 62.5\,\% of branches (20 of 32), 85.4\,\% of instructions and 90.2\,\% of methods (Table~\ref{tab:coverage}, Figure~\ref{fig:jacoco}). The mapper package is the weak point at 8.8\,\%: the hand-written mappers are exercised only indirectly, and the \texttt{TransportLogMapper} not at all. The 77.1\,\% figure is therefore an honest overall value, not a target met everywhere. The percentages in the JaCoCo report are instruction-based and differ slightly from the line-based ones of the table.
+
+\begin{table}[H]
+\centering\small
+\caption{JaCoCo line coverage of the backend by package (source: \texttt{jacoco.csv})}\label{tab:coverage}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}Xrrr@{}}
+\toprule
+\textbf{Package (\texttt{com.delivery\_tracker\_app.app.\ldots})} & \textbf{Covered} & \textbf{Total} & \textbf{Coverage} \\
+\midrule
+\texttt{controller.v1} & 49 & 49 & 100.0\,\% \\
+\texttt{exception} & 30 & 30 & 100.0\,\% \\
+\texttt{service.serviceimpl} & 99 & 102 & 97.1\,\% \\
+\texttt{config} & 106 & 118 & 89.8\,\% \\
+\texttt{dto.v1.*} (4 packages) & 11 & 12 & 91.7\,\% \\
+\texttt{mapper} & 7 & 80 & 8.8\,\% \\
+\texttt{app} (main class) & 1 & 3 & 33.3\,\% \\
+\midrule
+\textbf{Total} & \textbf{306} & \textbf{397} & \textbf{77.1\,\%} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\fbox{\includegraphics[width=0.40\linewidth]{images/screens/swagger-ui-ok.png}}\hfill
+\fbox{\includegraphics[width=0.54\linewidth]{images/screens/jacoco-report.png}}
+\caption{Left: Swagger UI listing the endpoints, served by the backend without authentication (local run). Right: JaCoCo HTML report of the backend (instruction and branch coverage by package).}\label{fig:swagger}\label{fig:jacoco}
+\end{figure}
+
+\subsection{Frontend Tests}
+
+The frontend test run (\texttt{npm test}) reports two passing tests, but both are placeholders: there is no component, hook or API-client test. The frontend is validated only by manual inspection and by the production build, which succeeded in 38.4~s. NFR-9 (main business logic covered by automated tests) is thus met for the backend and not for the frontend.
+
+%------------------------------------------------
+\section{Security Evaluation}\label{sec:res-security}
+
+The backend container runs as user \texttt{app} (uid 999) and the frontend container as \texttt{nginx} (uid 101); neither runs as root (\texttt{containers.txt}), and the three services of the stack started healthy. Table~\ref{tab:scans} summarizes the scans run on the current code; vulnerability counts are \emph{entries} of the reports, which may list the same CVE for several packages or paths.
+
+\begin{table}[H]
+\centering\small
+\caption{Results of the security scanners (sources: \texttt{gitleaks.json}, \texttt{semgrep.json}, \texttt{npm-audit.json}, \texttt{trivy-*.json}, \texttt{code-scanning-alerts.json})}\label{tab:scans}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.7cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Scanner} & \textbf{Result} \\
+\midrule
+Gitleaks (143 commits) & 1 finding: a generic API key in \texttt{.env.example}, line~7, from an early commit. \\
+Semgrep (\texttt{--config auto}, 351 rules, 67 files) & 0 findings in \texttt{back/src} and \texttt{front/src}. \\
+\texttt{npm audit} (1\,384 dependencies) & 70 vulnerabilities: 3 critical, 36 high, 13 moderate, 18 low. \\
+Trivy 0.56.2, file system & 3 critical and 106 high entries (critical: \texttt{proxy-addr}, \texttt{shell-quote}, \texttt{websocket-driver}, all frontend); backend: 2 high for \texttt{postgresql} 42.7.7 and 2 for \texttt{spring-boot-starter-actuator} 3.5.6; 16 critical Terraform misconfigurations. \\
+Trivy, images (OS packages only) & backend 2 high, 0 critical; frontend 0. Java libraries not scanned (949~MB database not downloaded). \\
+GitHub code scanning (remote) & 4 Trivy alerts, all high: 2 fixed, 2 open (CVE-2021-3803, CVE-2025-58754). \\
+OWASP Dependency-Check; DAST & not run (NVD download too slow); not performed. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+These figures call for interpretation rather than a ``zero vulnerabilities'' claim. The three critical entries concern transitive dependencies of the \texttt{react-scripts} build toolchain; they belong to the development server and the build and are not shipped in the production image, which serves static files through nginx. The frontend also declares \texttt{axios} 1.11 and \texttt{react-router} 7.8 directly, with high-severity entries (12 and 8), and these should be upgraded, as should the backend PostgreSQL driver and Actuator, which have patched versions. The 16 critical Terraform misconfigurations all come from firewall rules open to \texttt{0.0.0.0/0}: public ports 80 and 443 are intentional, and unrestricted egress is a common default, but each rule should be reviewed or narrowed. The Gitleaks finding is an example JWT secret, not a live credential as far as the evidence shows, and should be replaced by a placeholder. Semgrep's empty result only means that its public rule set found nothing in the application code; it is no proof of absence of flaws.
+
+%------------------------------------------------
+\section{Performance}\label{sec:res-perf}
+
+All values of this section are local, indicative measurements (Section~\ref{sec:res-setup-note}). Table~\ref{tab:latency} gives the latency of 50 sequential authenticated \texttt{curl} requests per endpoint. Reads take about 10~ms for clients and drivers and 27~ms for transport logs, which join two other tables. The login takes about 94~ms at the median, dominated by the password hash verification (the JWT signature alone was not isolated), and a request without token is rejected in about 4~ms.
+
+\begin{table}[H]
+\centering\small
+\caption{Latency of sequential \texttt{curl} requests, $n=50$ per endpoint (ms; source: \texttt{latency-curl.txt})}\label{tab:latency}
+\begin{tabularx}{\linewidth}{@{}Xrrrrr@{}}
+\toprule
+\textbf{Endpoint} & \textbf{min} & \textbf{median} & \textbf{mean} & \textbf{p95} & \textbf{max} \\
+\midrule
+\texttt{GET /clients?size=20} & 8.8 & 10.5 & 10.8 & 14.7 & 17.0 \\
+\texttt{GET /drivers?size=20} & 8.4 & 10.0 & 10.2 & 13.1 & 16.3 \\
+\texttt{GET /trans\_logs?size=20} & 20.1 & 27.0 & 29.4 & 46.0 & 56.1 \\
+\texttt{POST /auth/login} & 91.3 & 93.6 & 101.5 & 172.9 & 252.3 \\
+\texttt{GET /clients}, no token (401) & 3.2 & 4.0 & 4.0 & 4.6 & 5.1 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+A k6 script (\texttt{k6-script.js}) ran 10 virtual users for 30~s alternately requesting the list of clients and of drivers: 20\,983 requests at 696.5 requests per second, 0.00\,\% failed, with an average latency of 14.15~ms, a median of 11.13~ms, p90 of 20.84~ms, p95 of 26.73~ms and a maximum of 577.14~ms, an isolated outlier. The load generator shared the laptop with the system under test, so the throughput should not be extrapolated.
+
+Table~\ref{tab:footprint} lists the size and resource measurements. After \texttt{docker compose up -d}, the frontend answered at 14.6~s and the backend health endpoint reported \texttt{UP} at 27.1~s, including the start of the database. Memory comes from a single idle \texttt{docker stats} snapshot. The cold build of both images took 28~min~13~s, dominated by a very slow network and not representative.
+
+\begin{table}[H]
+\centering\small
+\caption{Size, startup and memory (sources: \texttt{containers.txt}, \texttt{startup-time.txt}, \texttt{frontend-build.txt})}\label{tab:footprint}
+\begin{tabularx}{\linewidth}{@{}Xr@{}}
+\toprule
+\textbf{Measure} & \textbf{Value} \\
+\midrule
+Backend image / frontend image & 353 MB / 70.1 MB \\
+Frontend \texttt{main.js} (raw / gzip); CSS (raw / gzip) & 676\,488 B / 203\,125 B; 337 B / 282 B \\
+Frontend production build time & 38.4 s \\
+Frontend reachable / backend health \texttt{UP} after \texttt{up -d} & 14.6 s / 27.1 s \\
+Idle memory: backend / PostgreSQL / nginx & 375.8 / 56.1 / 9.4 MiB \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+NFR-6 fixes 500~ms for a standard call. The p95 values (14.7~ms for clients, 46.0~ms for transport logs; k6 p95 26.7~ms) are far below it, but they exclude any network and production database latency, and the single 577~ms k6 request exceeded the target once; the target is therefore met in the test environment and remains to be confirmed under realistic conditions. NFR-7 (server-side pagination) is met: list responses carry \texttt{page}, \texttt{size}, \texttt{totalElements} and \texttt{totalPages} (\texttt{api-crud.txt}). No target exists for startup time, memory or bundle size, and no browser page-load measurement was taken.
+
+%------------------------------------------------
+\section{CI/CD Pipeline Results}\label{sec:res-ci}
+
+The history of the GitHub Actions workflows was extracted with the \texttt{gh} command (\texttt{ci-runs.json}, \texttt{ci-jobs.json}, \texttt{ci-summary.txt}) and covers 99 runs; durations are computed from job start and end times.
+
+\begin{table}[H]
+\centering\small
+\caption{Success rate of the workflows (source: \texttt{ci-summary.txt})}\label{tab:ci-rates}
+\begin{tabularx}{\linewidth}{@{}Xrr>{\raggedright\arraybackslash}p{4.2cm}@{}}
+\toprule
+\textbf{Workflow} & \textbf{Runs} & \textbf{Succeeded} & \textbf{Remark} \\
+\midrule
+CI Backend & 18 & 14 (77.8\,\%) & median 4 s, up to 403 s \\
+CI Frontend & 25 & 8 (32.0\,\%) & median 154 s \\
+Backend Security Scans & 16 & 16 (100\,\%) & 2--4 s wrapper runs \\
+CD Backend / CD Frontend & 16 / 4 & 16 / 4 (100\,\%) & 2--4 s, placeholder-style jobs \\
+Terraform Infrastructure / \texttt{terraform.yaml} & 11 / 8 & 0 / 0 (0\,\%) & never succeeded \\
+Generate OpenAPI Docs & 1 & 0 (0\,\%) & single failed run \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The backend pipeline is stable (14 of 18 runs) but the frontend pipeline succeeded in only 8 of 25, and the two Terraform workflows never succeeded on the remote, so the infrastructure code has not been validated by this pipeline. The 100\,\% rates of the CD and security-wrapper workflows must not be read as proof of deployment: their jobs last two to four seconds and the CD Backend job is named \texttt{placeholder}. Deployment is performed by the Ansible playbooks (Figure~\ref{fig:ansible}). In the latest successful runs on \texttt{main}, the backend run took 383~s (build 57~s, test 48~s, Docker image 140~s, security gate 132~s) and the frontend run 246~s (build and test 69~s, Docker image 108~s, security gate 64~s). The security gate of these runs predates the correction that makes the Trivy step fail on critical findings; it reported but did not block.
+
+\begin{figure}[htbp]
+\centering
+\fbox{\includegraphics[width=0.95\linewidth]{images/screens/ghactions.png}}
+\caption{GitHub Actions run summary of the CI Backend workflow on pull request \#11 (build, test, image push and security gate, all successful).}\label{fig:ghactions}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\fbox{\includegraphics[width=0.78\linewidth]{images/screens/ghactions-security.png}}
+\caption{Excerpt of the security-gate log of the same run (Gitleaks, Semgrep, both Trivy gates), fetched with \texttt{gh run view --log} and rendered, since the GitHub log viewer requires a signed-in session.}\label{fig:ghactions-sec}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\fbox{\includegraphics[width=0.78\linewidth]{images/screens/ansible.png}}
+\caption{Ansible verification run locally: syntax check of both playbooks and task list of \texttt{deploy.yml}; no connection to the servers was made.}\label{fig:ansible}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\fbox{\includegraphics[width=0.85\linewidth]{images/screens/github-security-tab.png}}
+\caption{Code-scanning alerts of the default branch, retrieved through the GitHub REST API (four Trivy alerts, two open, two fixed).}\label{fig:ghsecurity}
+\end{figure}
+
+%------------------------------------------------
+\section{Synthesis}\label{sec:res-synthesis}
+
+Table~\ref{tab:synthesis} summarizes the results against the objectives of Chapter~\ref{chap:context}. ``Achieved'' means that the evidence above supports the objective, ``partial'' that part of it is supported or the evidence is incomplete, and ``not evidenced'' that no evidence is available.
+
+\begin{table}[H]
+\centering\small
+\caption{Objectives, results and status}\label{tab:synthesis}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{1.9cm}@{}}
+\toprule
+\textbf{Objective} & \textbf{Result} & \textbf{Status} \\
+\midrule
+Full-stack application (Spring Boot, React, MUI) & CRUD of clients, drivers and transport logs verified through the API and the interface (Table~\ref{tab:fr-trace}). & achieved \\
+REST API documented with OpenAPI & Swagger UI and OpenAPI description served without authentication (Figure~\ref{fig:swagger}); the static documentation workflow failed in its only run. & achieved \\
+Persistence in PostgreSQL & Stack ran with PostgreSQL~16; repository tests and CRUD checks pass. & achieved \\
+Automated tests with JUnit~5 & 82 tests pass, 77.1\,\% line coverage; mappers at 8.8\,\% and no real frontend test. & partial \\
+JWT authentication and input validation & 401, 400 and 404 behaviors verified (Table~\ref{tab:fr-trace}). & achieved \\
+Secrets kept out of the source code & One example secret found by Gitleaks in \texttt{.env.example}. & partial \\
+Gitleaks, Semgrep, Dependency-Check, Trivy in CI & Gitleaks, Semgrep and Trivy executed with results (Table~\ref{tab:scans}); Dependency-Check not run here; critical findings remain in frontend dependencies. & partial \\
+Docker and Docker Compose packaging & Images of 353~MB and 70.1~MB, non-root users, stack healthy after 27.1~s. & achieved \\
+Terraform provisioning & Code exists, but the Terraform workflows never succeeded on the remote and misconfiguration findings remain. & partial \\
+Ansible configuration of servers & No run output available in the evidence. & not evidenced \\
+GitHub Actions build, test and delivery & CI Backend 77.8\,\%, CI Frontend 32.0\,\% success; CD jobs are placeholders; data predate the fixes. & partial \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Overall, the application and its API are functionally validated and secured at the authentication level, and local runtime performance is comfortably within the specified target. The weaknesses lie in the supply chain (frontend dependencies, example secret), the missing frontend tests and above all the delivery side, where the infrastructure and deployment automation could not be validated; these points are taken up in the limitations of Chapter~\ref{chap:discussion}.

@@ -1,0 +1,161 @@
+%========================================================================================
+%   Preamble — Delivery Tracker PFA report (compile with pdflatex + biber)
+%========================================================================================
+
+% ---- Encoding and language ----
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french,english]{babel}
+\usepackage{lmodern}
+\usepackage{textcomp}
+
+% ---- Layout and spacing ----
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\setlength{\emergencystretch}{3em}
+\usepackage{parskip}
+
+% ---- Maths / symbols ----
+\usepackage{amssymb}
+\usepackage{pifont}
+\usepackage{fontawesome5}
+\DeclareUnicodeCharacter{2713}{\checkmark}
+\DeclareUnicodeCharacter{2194}{\ensuremath{\leftrightarrow}}
+\DeclareUnicodeCharacter{2248}{\ensuremath{\approx}}
+
+% ---- Colours (report palette, also used by figures and title page) ----
+\usepackage[table]{xcolor}
+\definecolor{Eblue}{HTML}{007ACC}   % Azure blue
+\definecolor{Ecyan}{HTML}{17BEBB}   % Light cyan
+\definecolor{Egreen}{HTML}{0FA958}  % Green accent
+\definecolor{Eorange}{HTML}{F5A623} % Orange accent
+\definecolor{Egray}{HTML}{4A4A4A}   % Neutral gray
+
+% ---- Figures, TikZ, plots ----
+\usepackage{graphicx}
+\graphicspath{{images/}{images/screens/}}
+\usepackage{float}
+\usepackage{tikz}
+\usetikzlibrary{shapes,shapes.symbols,arrows,arrows.meta,positioning,shadows,fit,calc}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{pgfgantt}
+
+% ---- Tables ----
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{adjustbox}
+\usepackage{longtable}
+\usepackage{colortbl}
+
+% ---- Captions ----
+\usepackage{caption}
+\usepackage{subcaption}
+\captionsetup{font=small,labelfont=bf}
+
+% ---- Code listings ----
+\usepackage{listings}
+\lstdefinelanguage{JavaScript}{
+  keywords={const,let,var,function,return,if,else,for,while,import,from,export,default,class,constructor,new,async,await,try,catch,throw},
+  keywordstyle=\color{blue!70!black}\bfseries,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]",
+  morestring=[b]',
+  morestring=[b]`
+}
+\lstdefinelanguage{Dockerfile}{
+  keywords={FROM,RUN,CMD,COPY,ADD,ENTRYPOINT,EXPOSE,ENV,ARG,WORKDIR,USER,VOLUME,HEALTHCHECK,AS},
+  keywordstyle=\color{blue!70!black}\bfseries,
+  comment=[l]{\#},
+  morestring=[b]"
+}
+\lstdefinelanguage{YAML}{
+  keywords={true,false,null,yes,no},
+  keywordstyle=\color{blue!70!black}\bfseries,
+  comment=[l]{\#},
+  morestring=[b]",
+  morestring=[b]'
+}
+\lstdefinelanguage{HCL}{
+  keywords={resource,variable,output,module,provider,data,locals,terraform,backend,required_providers,for_each,count,depends_on,true,false},
+  keywordstyle=\color{blue!70!black}\bfseries,
+  comment=[l]{\#},
+  morecomment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]"
+}
+\lstdefinestyle{report}{
+  basicstyle=\ttfamily\footnotesize,
+  frame=single,
+  rulecolor=\color{Egray!60},
+  breaklines=true,
+  breakatwhitespace=false,
+  postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+  showstringspaces=false,
+  keepspaces=true,
+  tabsize=2,
+  extendedchars=true,
+  keywordstyle=\color{blue!70!black},
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{Eorange!80!black},
+  literate={–}{{-}}1 {—}{{--}}1 {→}{{$\rightarrow$}}1 {é}{{\'e}}1 {è}{{\`e}}1
+}
+\lstset{style=report}
+\lstdefinestyle{terraform}{style=report,language=HCL}
+\lstdefinestyle{yamlcode}{style=report,language=YAML}
+\lstdefinestyle{shellcode}{style=report,language=bash}
+
+% ---- Headers / footers ----
+\usepackage{fancyhdr}
+\setlength{\headheight}{14pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Delivery Tracker --- PFA Report}
+\fancyhead[R]{\small\nouppercase{\leftmark}}
+\fancyfoot[C]{\thepage}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\thepage}\renewcommand{\headrulewidth}{0pt}}
+
+% ---- Boxed environments ----
+\usepackage[most]{tcolorbox}
+\tcbset{colback=blue!5!white,colframe=blue!75!black,boxrule=0.8pt,arc=3pt}
+
+% ---- Acronyms ----
+\usepackage[nolist]{acronym}
+
+% ---- Bibliography ----
+\usepackage{csquotes}
+\usepackage[backend=biber,style=ieee,sorting=none]{biblatex}
+\addbibresource{references.bib}
+\addbibresource{refs-ch2.bib}
+
+% ---- To-do / human-input markers ----
+\usepackage[colorinlistoftodos,textsize=footnotesize]{todonotes}
+% \needsinput{what the authors must provide}: visible block in the text
+\newcommand{\needsinput}[1]{\todo[inline,color=yellow!60,caption={}]{\textbf{Input needed:} #1}}
+% \placeholder{text}: inline highlighted placeholder
+\newcommand{\placeholder}[1]{\colorbox{yellow!60}{\textbf{[#1]}}}
+
+% ---- Screenshots: image if present in images/screens/, else a grey box ----
+% \screenshot[width]{filename}{caption}{label}
+\newcommand{\screenshot}[4][0.8\linewidth]{%
+  \begin{figure}[H]
+    \centering
+    \IfFileExists{images/screens/#2}{%
+      \fbox{\includegraphics[width=#1]{images/screens/#2}}%
+    }{%
+      \fbox{\parbox[c][5cm][c]{#1}{\centering\color{Egray}\textbf{Screenshot needed:}\\[2pt]\texttt{\detokenize{#2}}}}%
+    }%
+    \caption{#3}\label{#4}
+  \end{figure}%
+}
+
+% ---- Cross-reference/URL packages (hyperref last) ----
+\usepackage{url}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
+
+% ---- ENSA cover page macros (cover only, see ensa-cover.sty) ----
+\usepackage{ensa-cover}

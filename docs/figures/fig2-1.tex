@@ -1,0 +1,21 @@
+\begin{figure}[H]
+\centering
+\begin{adjustbox}{max width=\linewidth}
+\begin{tikzpicture}[
+    node distance=3.5cm,
+    box/.style={rectangle,rounded corners,draw=Eblue,fill=Ecyan!10,
+                minimum width=3.2cm,minimum height=1.2cm,align=center,font=\sffamily},
+    arrow/.style={->,>=Stealth,thick,Eblue}
+]
+\node[box] (wf) {Waterfall\\Security at End};
+\node[box,right=of wf] (devops) {DevOps\\Continuous Delivery};
+\node[box,right=of devops,fill=Eblue!10] (devsecops) {DevSecOps\\Security Integrated};
+
+\draw[arrow] (wf) -- node[above,font=\small\sffamily]{Speed + Automation} (devops);
+\draw[arrow] (devops) -- node[above,font=\small\sffamily]{Shift Left Security} (devsecops);
+
+\end{tikzpicture}
+\end{adjustbox}
+\caption{Evolution of software delivery paradigms toward DevSecOps}
+\label{fig:evolution}
+\end{figure}

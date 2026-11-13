@@ -98,7 +98,7 @@ public class ClientController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a client by ID", description = "Removes a client record from the system based on their unique ID.")
-    @ApiResponse(responseCode = "204", description = "Client deleted successfully (No Content)") // As your controller returns ResponseEntity.noContent().build()
+    @ApiResponse(responseCode = "200", description = "Client deleted successfully")
     @ApiResponse(responseCode = "400", description = "Invalid client ID format",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "Client not found",

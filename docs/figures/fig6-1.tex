@@ -1,0 +1,35 @@
+\begin{figure}[htbp]
+\centering
+\begin{adjustbox}{max height=4.2cm}
+\begin{tikzpicture}[node distance=1.6cm, >=latex, thick]
+
+\tikzstyle{container}=[
+  rectangle, draw=Eblue, fill=Ecyan!15,
+  rounded corners=6pt, minimum width=4.4cm, minimum height=1.2cm,
+  font=\small, align=center
+]
+\tikzstyle{volume}=[
+  cylinder, shape border rotate=90,
+  draw=Eblue, fill=Eorange!30,
+  minimum height=1.2cm, minimum width=1.6cm, aspect=0.3,
+  font=\small
+]
+
+\node[container](frontend){\textbf{React frontend}\\[-1pt]\scriptsize published on port 3000};
+\node[container, below=of frontend](backend){\textbf{Spring Boot backend}\\[-1pt]\scriptsize \texttt{app}, port 8080};
+\node[container, below=of backend](database){\textbf{PostgreSQL 16}\\[-1pt]\scriptsize \texttt{db}, port 5432};
+\node[volume, right=4.0cm of database](dbvol){\texttt{db\_data}};
+
+\draw[<->, Eblue] (frontend) -- node[right]{\scriptsize HTTP / REST} (backend);
+\draw[<->, Eblue] (backend) -- node[right]{\scriptsize JDBC} (database);
+\draw[->, Eblue] (database) -- node[above, pos=0.62]{\scriptsize named volume} (dbvol);
+
+\node[draw, dashed, rounded corners=10pt,
+      fit=(frontend)(backend)(database),
+      inner sep=0.5cm, label={[Eblue,font=\small]below:Compose network \texttt{my-app-network} (bridge)}] {};
+
+\end{tikzpicture}
+\end{adjustbox}
+\caption{Services of the local Docker Compose stack (\texttt{docker/docker-compose.local.yaml}).}
+\label{fig:docker-arch}
+\end{figure}

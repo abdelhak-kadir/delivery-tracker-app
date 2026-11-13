@@ -1,0 +1,62 @@
+\begin{figure}[htbp]
+\centering
+\begin{adjustbox}{max width=\linewidth}
+\setlength{\tabcolsep}{9pt}
+\begin{tikzpicture}[>=latex, thick,
+  cls/.style={draw=Eblue, fill=white, inner sep=0pt, font=\footnotesize},
+  lbl/.style={font=\scriptsize, fill=white, inner sep=1pt}]
+
+\node[cls, anchor=north east] (client) at (-6.3,0) {%
+\begin{tabular}{p{3.9cm}}\hline
+\multicolumn{1}{>{\centering\arraybackslash}p{3.9cm}}{\scriptsize\textit{<<Entity>>}}\\
+\multicolumn{1}{>{\centering\arraybackslash}p{3.9cm}}{\textbf{Client}}\\\hline
+\texttt{-id : Long} \textit{(PK)}\\
+\texttt{-name : String}\\
+\texttt{-identityId : String}\\\hline
+\end{tabular}};
+
+\node[cls, anchor=north west] (driver) at (6.3,0) {%
+\begin{tabular}{p{3.9cm}}\hline
+\multicolumn{1}{>{\centering\arraybackslash}p{3.9cm}}{\scriptsize\textit{<<Entity>>}}\\
+\multicolumn{1}{>{\centering\arraybackslash}p{3.9cm}}{\textbf{Driver}}\\\hline
+\texttt{-id : Long} \textit{(PK)}\\
+\texttt{-name : String}\\
+\texttt{-plateNumber : String}\\\hline
+\end{tabular}};
+
+\node[cls, anchor=north] (log) at (0,0) {%
+\begin{tabular}{p{5.7cm}}\hline
+\multicolumn{1}{>{\centering\arraybackslash}p{5.7cm}}{\scriptsize\textit{<<Entity>>}}\\
+\multicolumn{1}{>{\centering\arraybackslash}p{5.7cm}}{\textbf{TransportLog}}\\\hline
+\texttt{-id : Long} \textit{(PK)}\\
+\texttt{-client : Client}\\
+\texttt{-driver : Driver}\\
+\texttt{-loadDate : LocalDate}\\
+\texttt{-loadLocation : String}\\
+\texttt{-unloadDate : LocalDate}\\
+\texttt{-unloadLocation : String}\\
+\texttt{-destinationName : String}\\
+\texttt{-deliveryNote : String}\\
+\texttt{-advance : BigDecimal}\\
+\texttt{-fuelQuantity : BigDecimal}\\
+\texttt{-fuelPricePerLiter : BigDecimal}\\
+\texttt{-variableCharge : BigDecimal}\\
+\texttt{-chargePrice : BigDecimal}\\
+\texttt{-clientTariff : BigDecimal}\\
+\texttt{-tripPrice : BigDecimal}\\
+\texttt{-operator : String}\\
+\texttt{-commercial : String}\\\hline
+\end{tabular}};
+
+% associations (TransportLog -> Client / Driver), @ManyToOne
+\draw[->] ([yshift=-1.7cm]log.north west) -- node[lbl, above=2pt]{\texttt{client}} ([yshift=-1.7cm]client.north east);
+\draw[->] ([yshift=-1.95cm]log.north east) -- node[lbl, above=2pt]{\texttt{driver}} ([yshift=-1.95cm]driver.north west);
+\node[lbl] at ([xshift=-0.35cm,yshift=-1.4cm]log.north west) {$*$};
+\node[lbl] at ([xshift=0.35cm,yshift=-1.65cm]log.north east) {$*$};
+\node[lbl] at ([xshift=0.35cm,yshift=-1.4cm]client.north east) {$1$};
+\node[lbl] at ([xshift=-0.35cm,yshift=-1.65cm]driver.north west) {$1$};
+\end{tikzpicture}
+\end{adjustbox}
+\caption{Class diagram of the persistent domain model (JPA entities in \texttt{app.entity}); each \texttt{TransportLog} references one \texttt{Client} and one \texttt{Driver} through \texttt{@ManyToOne}}
+\label{fig:db-schema}
+\end{figure}

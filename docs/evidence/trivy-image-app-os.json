@@ -1,0 +1,269 @@
+{
+  "SchemaVersion": 2,
+  "CreatedAt": "2026-11-06T00:13:57.237544982Z",
+  "ArtifactName": "dtevidence-app",
+  "ArtifactType": "container_image",
+  "Metadata": {
+    "OS": {
+      "Family": "ubuntu",
+      "Name": "22.04"
+    },
+    "ImageID": "sha256:c31c2e964d5e00fcc518cc86822c199e991b28683618918803dfe84b688a7e28",
+    "DiffIDs": [
+      "sha256:297a592b66593a3dddc39e7970a718cc1cbb04c8a9b904009b33eb623dafc588",
+      "sha256:7fd3048f98a5dfc642633dfed9ef69a4b259229c84c06ab6cf80a5d38f937a23",
+      "sha256:dbf3ead19384ebbdd74e555d9410103db94ee0840adc3d2183df3850d5fd6c41",
+      "sha256:aaa722f602fb9ae492932f13fa5c56897f36982f918494c480e8180ae8a2a821",
+      "sha256:93c138625a791c0a58dfb74fcccf6c676d9ed11aec2d1e444764582395795a0e",
+      "sha256:bc0c0aba3bdaa5f7b65a565f801524a64f3bf5da64bd7166bc73ba20e169fa4b",
+      "sha256:75feeef2e2d36cf134e5592cf3842724b03c5f959312a7c8b5f93c394b1ff5e7",
+      "sha256:ce5ea45653257c9d467381d2647b15865c638e2f3d9f785fcfd9b2ddd63222ac"
+    ],
+    "RepoTags": [
+      "dtevidence-app:latest"
+    ],
+    "ImageConfig": {
+      "architecture": "amd64",
+      "created": "2026-11-05T23:57:51.881603715Z",
+      "history": [
+        {
+          "created": "2026-10-25T20:10:42Z",
+          "created_by": "/bin/sh -c #(nop)  ARG RELEASE",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-25T20:10:42Z",
+          "created_by": "/bin/sh -c #(nop)  ARG LAUNCHPAD_BUILD_ARCH",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-25T20:10:42Z",
+          "created_by": "/bin/sh -c #(nop)  LABEL org.opencontainers.image.version=22.04",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-25T20:10:44Z",
+          "created_by": "/bin/sh -c #(nop) ADD file:ba52f9eec2a5a7de74e9a460017725370755c2d4814dd746bde7507601befb53 in / "
+        },
+        {
+          "created": "2026-10-25T20:10:44Z",
+          "created_by": "/bin/sh -c #(nop)  CMD [\"/bin/bash\"]",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-29T19:14:28Z",
+          "created_by": "ENV JAVA_HOME=/opt/java/openjdk",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-29T19:14:28Z",
+          "created_by": "ENV PATH=/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-29T19:14:28Z",
+          "created_by": "ENV LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-29T19:14:28Z",
+          "created_by": "RUN /bin/sh -c set -eux;     apt-get update;     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends         curl         wget         gnupg         fontconfig         ca-certificates p11-kit         tzdata         locales     ;     echo \"en_US.UTF-8 UTF-8\" \u003e\u003e /etc/locale.gen;     locale-gen en_US.UTF-8;     rm -rf /var/lib/apt/lists/* # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-10-29T19:14:28Z",
+          "created_by": "ENV JAVA_VERSION=jdk-21.0.13+9",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-29T19:14:31Z",
+          "created_by": "RUN /bin/sh -c set -eux;     ARCH=\"$(dpkg --print-architecture)\";     case \"${ARCH}\" in        amd64)          ESUM='a535a1df9c6284d9618872984e026ae0352d1f7e9e0605425c0e6114f47351dd';          BINARY_URL='https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jre_x64_linux_hotspot_21.0.13_9.tar.gz';          ;;        arm64)          ESUM='b1734db7ade49c3f6acc6ae06233b8c2dd90e3e2f00f67000ae1c972aaa64d8c';          BINARY_URL='https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jre_aarch64_linux_hotspot_21.0.13_9.tar.gz';          ;;        ppc64el)          ESUM='4994d5bf70a58b683c86158dc1c19c973551cc225956893f91008c6180469c6c';          BINARY_URL='https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jre_ppc64le_linux_hotspot_21.0.13_9.tar.gz';          ;;        s390x)          ESUM='f4722f400e7fce6e6d80c86d5ef68d0007694670a0a2b0bb569ad0e83dd5f996';          BINARY_URL='https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jre_s390x_linux_hotspot_21.0.13_9.tar.gz';          ;;        *)          echo \"Unsupported arch: ${ARCH}\";          exit 1;          ;;     esac;     wget --progress=dot:giga -O /tmp/openjdk.tar.gz ${BINARY_URL};     wget --progress=dot:giga -O /tmp/openjdk.tar.gz.sig ${BINARY_URL}.sig;     export GNUPGHOME=\"$(mktemp -d)\";     gpg --batch --keyserver keyserver.ubuntu.com --recv-keys 3B04D753C9050D9A5D343F39843C48A565F8F04B;     gpg --batch --verify /tmp/openjdk.tar.gz.sig /tmp/openjdk.tar.gz;     rm -rf \"${GNUPGHOME}\" /tmp/openjdk.tar.gz.sig;     echo \"${ESUM} */tmp/openjdk.tar.gz\" | sha256sum -c -;     mkdir -p \"$JAVA_HOME\";     tar --extract         --file /tmp/openjdk.tar.gz         --directory \"$JAVA_HOME\"         --strip-components 1         --no-same-owner     ;     rm -f /tmp/openjdk.tar.gz;     find \"$JAVA_HOME/lib\" -name '*.so' -exec dirname '{}' ';' | sort -u \u003e /etc/ld.so.conf.d/docker-openjdk.conf;     ldconfig;     java -Xshare:dump; # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-10-29T19:14:31Z",
+          "created_by": "RUN /bin/sh -c set -eux;     echo \"Verifying install ...\";     echo \"java --version\"; java --version;     echo \"Complete.\" # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-10-29T19:14:31Z",
+          "created_by": "COPY --chmod=755 entrypoint.sh /__cacert_entrypoint.sh # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-10-29T19:14:31Z",
+          "created_by": "ENTRYPOINT [\"/__cacert_entrypoint.sh\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-05T23:44:53Z",
+          "created_by": "WORKDIR /app",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-05T23:44:53Z",
+          "created_by": "EXPOSE \u0026{[{{31 0} {31 0}}] 0xc00091f640}",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-05T23:44:53Z",
+          "created_by": "RUN /bin/sh -c groupadd --system app \u0026\u0026 useradd --system --gid app --no-create-home app # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-05T23:57:51Z",
+          "created_by": "COPY --chown=app:app /app/target/*.jar app.jar # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-05T23:57:51Z",
+          "created_by": "USER app",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-05T23:57:51Z",
+          "created_by": "ENTRYPOINT [\"java\" \"-jar\" \"app.jar\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        }
+      ],
+      "os": "linux",
+      "rootfs": {
+        "type": "layers",
+        "diff_ids": [
+          "sha256:297a592b66593a3dddc39e7970a718cc1cbb04c8a9b904009b33eb623dafc588",
+          "sha256:7fd3048f98a5dfc642633dfed9ef69a4b259229c84c06ab6cf80a5d38f937a23",
+          "sha256:dbf3ead19384ebbdd74e555d9410103db94ee0840adc3d2183df3850d5fd6c41",
+          "sha256:aaa722f602fb9ae492932f13fa5c56897f36982f918494c480e8180ae8a2a821",
+          "sha256:93c138625a791c0a58dfb74fcccf6c676d9ed11aec2d1e444764582395795a0e",
+          "sha256:bc0c0aba3bdaa5f7b65a565f801524a64f3bf5da64bd7166bc73ba20e169fa4b",
+          "sha256:75feeef2e2d36cf134e5592cf3842724b03c5f959312a7c8b5f93c394b1ff5e7",
+          "sha256:ce5ea45653257c9d467381d2647b15865c638e2f3d9f785fcfd9b2ddd63222ac"
+        ]
+      },
+      "config": {
+        "Entrypoint": [
+          "java",
+          "-jar",
+          "app.jar"
+        ],
+        "Env": [
+          "PATH=/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "JAVA_HOME=/opt/java/openjdk",
+          "LANG=en_US.UTF-8",
+          "LANGUAGE=en_US:en",
+          "LC_ALL=en_US.UTF-8",
+          "JAVA_VERSION=jdk-21.0.13+9"
+        ],
+        "Labels": {
+          "com.docker.compose.project": "dtevidence",
+          "com.docker.compose.service": "app",
+          "com.docker.compose.version": "2.39.4",
+          "org.opencontainers.image.version": "22.04"
+        },
+        "User": "app",
+        "WorkingDir": "/app"
+      }
+    }
+  },
+  "Results": [
+    {
+      "Target": "dtevidence-app (ubuntu 22.04)",
+      "Class": "os-pkgs",
+      "Type": "ubuntu",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2026-109518",
+          "PkgID": "apt@2.4.14",
+          "PkgName": "apt",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/apt@2.4.14?arch=amd64\u0026distro=ubuntu-22.04",
+            "UID": "d864a27d970562b2"
+          },
+          "InstalledVersion": "2.4.14",
+          "FixedVersion": "2.4.15ubuntu0.1",
+          "Status": "fixed",
+          "Layer": {
+            "DiffID": "sha256:297a592b66593a3dddc39e7970a718cc1cbb04c8a9b904009b33eb623dafc588"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-109518",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Title": "On Debian, Ubuntu, and derivative Linux distributions, an on-path atta ...",
+          "Description": "On Debian, Ubuntu, and derivative Linux distributions, an on-path attacker who can manipulate the HTTP traffic (including a malicious mirror or proxy) between an APT client and an archive server triggered by a package install can trick the client into installing an attacker-controlled unverified package and achieve remote code execution with root privileges.\n\n\n\nThe vulnerability is caused by the reuse of hard links and requires the client to follow redirects and retry the download of package files. It requires the client to have a non-zero Acquire::Retries configuration setting; the value 3 is the default starting with Debian 12 (bookworm) and Ubuntu 22.04 LTS (Jammy Jellyfish), so older releases are unaffected in a default configuration",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-62",
+            "CWE-367"
+          ],
+          "VendorSeverity": {
+            "ubuntu": 3
+          },
+          "References": [
+            "http://www.openwall.com/lists/oss-security/2026/11/04/12",
+            "https://lists.debian.org/debian-lts-announce/2026/11/msg00004.html",
+            "https://lists.debian.org/debian-security-announce/2026/msg00526.html",
+            "https://ubuntu.com/blog/apt-vulnerability-fixes-available",
+            "https://ubuntu.com/security/notices/USN-8996-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-109518"
+          ],
+          "PublishedDate": "2026-11-04T16:17:33.01Z",
+          "LastModifiedDate": "2026-11-05T05:18:19.033Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-109518",
+          "PkgID": "libapt-pkg6.0@2.4.14",
+          "PkgName": "libapt-pkg6.0",
+          "PkgIdentifier": {
+            "PURL": "pkg:deb/ubuntu/libapt-pkg6.0@2.4.14?arch=amd64\u0026distro=ubuntu-22.04",
+            "UID": "bb6bac36b6707610"
+          },
+          "InstalledVersion": "2.4.14",
+          "FixedVersion": "2.4.15ubuntu0.1",
+          "Status": "fixed",
+          "Layer": {
+            "DiffID": "sha256:297a592b66593a3dddc39e7970a718cc1cbb04c8a9b904009b33eb623dafc588"
+          },
+          "SeveritySource": "ubuntu",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-109518",
+          "DataSource": {
+            "ID": "ubuntu",
+            "Name": "Ubuntu CVE Tracker",
+            "URL": "https://git.launchpad.net/ubuntu-cve-tracker"
+          },
+          "Title": "On Debian, Ubuntu, and derivative Linux distributions, an on-path atta ...",
+          "Description": "On Debian, Ubuntu, and derivative Linux distributions, an on-path attacker who can manipulate the HTTP traffic (including a malicious mirror or proxy) between an APT client and an archive server triggered by a package install can trick the client into installing an attacker-controlled unverified package and achieve remote code execution with root privileges.\n\n\n\nThe vulnerability is caused by the reuse of hard links and requires the client to follow redirects and retry the download of package files. It requires the client to have a non-zero Acquire::Retries configuration setting; the value 3 is the default starting with Debian 12 (bookworm) and Ubuntu 22.04 LTS (Jammy Jellyfish), so older releases are unaffected in a default configuration",
+          "Severity": "HIGH",
+          "CweIDs": [
+            "CWE-62",
+            "CWE-367"
+          ],
+          "VendorSeverity": {
+            "ubuntu": 3
+          },
+          "References": [
+            "http://www.openwall.com/lists/oss-security/2026/11/04/12",
+            "https://lists.debian.org/debian-lts-announce/2026/11/msg00004.html",
+            "https://lists.debian.org/debian-security-announce/2026/msg00526.html",
+            "https://ubuntu.com/blog/apt-vulnerability-fixes-available",
+            "https://ubuntu.com/security/notices/USN-8996-1",
+            "https://www.cve.org/CVERecord?id=CVE-2026-109518"
+          ],
+          "PublishedDate": "2026-11-04T16:17:33.01Z",
+          "LastModifiedDate": "2026-11-05T05:18:19.033Z"
+        }
+      ]
+    }
+  ]
+}

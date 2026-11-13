@@ -1,0 +1,132 @@
+%========================================================================================
+%   Chapter 3 -- Requirements Analysis
+%========================================================================================
+
+\chapter{Requirements Analysis}\label{chap:requirements}
+
+This chapter states what the Delivery Tracker system has to do and under which constraints: the business need, the actors and use cases, and the numbered functional and non-functional requirements. They are stated against the system as built, so every functional requirement can be traced to an endpoint or a screen. The design that satisfies them is the subject of Chapter~\ref{chap:design}.
+
+%------------------------------------------------
+\section{Problem Statement and Business Context}
+
+The business of the host company (Chapter~\ref{chap:context}) revolves around trips: a driver loads goods for a client, drives them to a destination and unloads them on a given date. Each trip generates information that must be recorded precisely because it supports invoicing and cost control. We identified three needs. \emph{Centralized records}: clients, drivers and trips must be stored in one shared, structured place instead of scattered documents. \emph{Controlled access}: the records contain commercial data (client identities, tariffs, prices), so only an authenticated person of the company may read or modify them. \emph{A reproducible, secure way to run the system}: the application must be built, scanned, deployed and operated through automated procedures, which links it to the DevSecOps subject of Chapter~\ref{chap:sota}. The system therefore has a business application (web interface and REST API) and a delivery platform (infrastructure as code, configuration management and a CI/CD pipeline with security checks); Figure~\ref{fig:high-level-architecture} places both in their context.
+
+\input{figures/fig3-1}
+
+A transport log is the central business record: it references one client and one driver and carries the monetary fields of the trip (\texttt{advance}, \texttt{fuelQuantity}, \texttt{fuelPricePerLiter}, \texttt{variableCharge}, \texttt{chargePrice}, \texttt{clientTariff}, \texttt{tripPrice}). These amounts are entered by the operator and stored as provided; automatic computation of the price is a possible evolution, not a requirement.
+
+%------------------------------------------------
+\section{Actors and Use Cases}
+
+Two actors interact with the system. The \emph{administrator / logistics operator} records and consults clients, drivers and trips through the React interface (and may read the OpenAPI documentation); the application authenticates exactly one configured account, which carries the role \texttt{ROLE\_ADMIN} (see Section~\ref{sec:fr}). The \emph{DevOps engineer} (secondary actor) does not use the application but maintains the code, the infrastructure and the pipeline through Git, GitHub Actions, Terraform, Ansible and SSH access via the bastion host.
+
+\subsection{Use Cases}
+
+Figure~\ref{fig:use-cases} groups the interactions in two boundaries: the application and the delivery platform. Every application use case except the consultation of the API documentation requires a prior login (\texttt{include} relation). Table~\ref{tab:use-cases} summarizes each use case.
+
+\input{figures/fig3-2}
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\caption{Description of the use cases}
+\label{tab:use-cases}
+\renewcommand{\arraystretch}{1.1}
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Use case} & \textbf{Actor} & \textbf{Summary} \\
+\midrule
+UC-1 Log in & Administrator & The actor submits a username and a password; on success the system returns a JWT valid for 30 minutes and the interface opens the dashboard. \\
+UC-2 View dashboard & Administrator & The interface shows the number of clients, drivers and transport logs and a summary of recent trips. \\
+UC-3 Manage clients & Administrator & List (paginated), create, modify and delete clients, each identified by a name and an identity number. \\
+UC-4 Manage drivers & Administrator & List (paginated), create, modify and delete drivers, each identified by a name and a plate number. \\
+UC-5 Manage transport logs & Administrator & Record a trip for an existing client and driver, then list, consult, modify or delete it. \\
+UC-6 Consult API documentation & Administrator, DevOps engineer & Open the Swagger UI or download the OpenAPI description without authentication. \\
+UC-7 Provision infrastructure & DevOps engineer & Create or update the cloud resources of an environment through Terraform. \\
+UC-8 Configure and deploy servers & DevOps engineer & Harden the servers and deploy the containers with Ansible through the bastion. \\
+UC-9 Run CI/CD and security scans & DevOps engineer & Trigger the build, test, scan and deployment workflows by pushing code. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%------------------------------------------------
+\section{Functional Requirements}
+\label{sec:fr}
+
+Table~\ref{tab:fr} lists the functional requirements, derived from the backend controllers and the frontend routes; paths are under the \texttt{/api/v1} prefix (full contract in Chapter~\ref{chap:design}).
+
+{
+\renewcommand{\arraystretch}{1.05}
+\footnotesize
+\begin{longtable}{@{}p{1.1cm}>{\raggedright\arraybackslash}p{7.4cm}>{\raggedright\arraybackslash}p{4.2cm}p{1.5cm}@{}}
+\caption{Functional requirements}\label{tab:fr}\\
+\toprule
+\textbf{ID} & \textbf{Requirement} & \textbf{Realized by} & \textbf{UC} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{ID} & \textbf{Requirement} & \textbf{Realized by} & \textbf{UC} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+FR-1 & The system shall authenticate a user from a username and a password and return a signed JWT with its expiry time. & \texttt{POST /auth/login} & UC-1 \\
+FR-2 & The system shall reject every request to a business endpoint that does not carry a valid, unexpired token, with a \texttt{401} answer in the standard JSON error format. & Security filter chain, authentication entry point & UC-1 \\
+FR-3 & The system shall be configured with one application account whose credentials come from environment variables, and shall store its password only in hashed form in memory. & \texttt{Simple\-User\-Details\-Service} & UC-1 \\
+FR-4 & The system shall let the user create a client with a name and an identity number. & \texttt{POST /clients} & UC-3 \\
+FR-5 & The system shall list clients page by page, and return one client by identifier. & \texttt{GET /clients}, \texttt{GET /clients/\{id\}} & UC-3 \\
+FR-6 & The system shall let the user modify a client (name and identity number) and delete it; modifying or deleting a client that does not exist shall be answered with \texttt{404}. & \texttt{PUT /clients}, \texttt{DELETE /clients/\{id\}} & UC-3 \\
+FR-7 & The system shall let the user create, list (paginated), consult, modify and delete drivers, each described by a name and a plate number. & \texttt{/drivers} (five operations) & UC-4 \\
+FR-8 & The system shall let the user record a transport log referencing an existing client and an existing driver, with load and unload dates and places, destination, delivery note, advance, fuel quantity and unit price, variable charge, charge price, client tariff, trip price, operator and commercial. & \texttt{POST /trans\_logs} & UC-5 \\
+FR-9 & The system shall list transport logs page by page, return one by identifier, modify and delete them. & \texttt{GET}, \texttt{PUT}, \texttt{DELETE} on \texttt{/trans\_logs} & UC-5 \\
+FR-10 & The system shall validate every incoming payload and answer with a structured error (status, message, path, timestamp) when a field is invalid (\texttt{400}), a resource does not exist (\texttt{404}) or the caller is not authenticated (\texttt{401}) or not allowed (\texttt{403}). & Bean Validation, \texttt{Global\-Exception\-Handler}, security configuration & UC-3 to 5 \\
+FR-11 & The web interface shall offer a login page, a dashboard and one management page each for clients, drivers and transport logs, and redirect unauthenticated visitors to the login page. & React routes & UC-1 to 5 \\
+FR-12 & The web interface shall display the totals of clients, drivers and transport logs on the dashboard. & Dashboard component & UC-2 \\
+FR-13 & The system shall publish its OpenAPI description and an interactive Swagger UI, and expose a health endpoint, without requiring authentication. & springdoc, Actuator & UC-6 \\
+FR-14 & The infrastructure of the staging and production environments shall be described as code and created by Terraform. & \texttt{infra/} & UC-7 \\
+FR-15 & The servers shall be configured, hardened and updated with the application containers through Ansible playbooks. & \texttt{ansible/} & UC-8 \\
+FR-16 & Each change pushed to the repository shall trigger build, test and security-scan workflows. & \texttt{.github/workflows/} & UC-9 \\
+\end{longtable}
+}
+
+%------------------------------------------------
+\section{Non-Functional Requirements}
+
+Table~\ref{tab:nfr} states the quality requirements. Performance values are \emph{targets} fixed at specification time, not measurements; they are assessed in Chapter~\ref{chap:results}.
+
+{
+\renewcommand{\arraystretch}{1.05}
+\footnotesize
+\begin{longtable}{@{}p{1.3cm}p{2.6cm}>{\raggedright\arraybackslash}p{10.4cm}@{}}
+\caption{Non-functional requirements}\label{tab:nfr}\\
+\toprule
+\textbf{ID} & \textbf{Category} & \textbf{Requirement} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{ID} & \textbf{Category} & \textbf{Requirement} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+NFR-1 & Security & Business endpoints shall be reachable only with a valid JWT; the only unauthenticated endpoints are the login, the OpenAPI/Swagger resources and the health check. \\
+NFR-2 & Security & Passwords shall never be stored or logged in clear text; secrets (JWT key, database password, application account) shall be injected through environment variables or an encrypted vault, never committed. \\
+NFR-3 & Security & The backend shall be stateless (no server session) and its token lifetime shall be limited (30 minutes). \\
+NFR-4 & Security & Servers shall expose only the ports they need: SSH only through a bastion host, the application port only to the frontend, the database only to the backend. \\
+NFR-5 & Security & Source code, dependencies, container images and infrastructure code shall be scanned automatically for secrets and known vulnerabilities at each change. \\
+NFR-6 & Performance (target) & A standard API call (for example a page of 10 records) should answer in less than 500~ms under normal load. \\
+NFR-7 & Performance (target) & Lists shall be paginated server-side so that response size does not grow with the table size. \\
+NFR-8 & Maintainability & The backend shall follow a layered structure (controller, service, repository, dto, mapper, exception) and expose a versioned API (\texttt{/api/v1}). \\
+NFR-9 & Maintainability & The API shall be self-documented with OpenAPI, and the main business logic shall be covered by automated tests. \\
+NFR-10 & Deployability & Every environment shall be reproducible from code (Terraform, Ansible, Docker) without manual server configuration. \\
+NFR-11 & Deployability & Staging and production shall be isolated from each other (separate servers, firewalls and databases). \\
+NFR-12 & Observability & The application shall expose a health endpoint and the servers shall expose basic host metrics. \\
+\end{longtable}
+}
+
+%------------------------------------------------
+\section{Technology Stack and Constraints}
+
+The stack was chosen for its maturity, its support for the DevSecOps practices of Chapter~\ref{chap:sota} and the team's prior knowledge: Java 21 with Spring Boot 3.5.6 (Spring Security, jjwt 0.12.5, JPA, springdoc-openapi 2.8.9, JUnit 5, JaCoCo) and PostgreSQL 16 on the backend; React 19.1 with MUI 7.3, React Router 7.8 and Axios 1.11 on the frontend; Docker, Docker Compose and Nginx for runtime; Terraform with the DigitalOcean provider and a Terraform Cloud backend, Ansible with Vault, and GitHub Actions with GHCR for infrastructure and delivery; Gitleaks, Semgrep, OWASP Dependency-Check, npm audit, Trivy, tfsec, Checkov and OPA/Conftest for security checks. Versions are those declared in the project files.
+
+The main constraint is time (one month), which explains the parts kept deliberately simple. The scope includes the business application (authentication, clients, drivers, transport logs, dashboard), its containerization, the Terraform description of a staging and a production environment, the Ansible roles for hardening and deployment, and the GitHub Actions workflows for tests, security scans and infrastructure checks. The application has no user management (no registration, user table, password reset or refresh token) and authorization is limited to one role. Business computations (automatic trip price, reports, exports), notifications and real-time tracking are excluded, and the frontend delivery is not automated beyond the build and image publication. These exclusions match the company's request (a central place to record and find clients, drivers and logs, replacing the spreadsheets); reports, exports and automatic pricing are future work (Chapter~\ref{chap:conclusion}).

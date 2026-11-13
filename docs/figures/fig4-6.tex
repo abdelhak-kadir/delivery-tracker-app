@@ -1,0 +1,23 @@
+\begin{figure}[htbp]
+\centering
+\begin{adjustbox}{max width=\linewidth}
+\begin{tikzpicture}[>=latex, thick, auto,
+  st/.style={rectangle, draw=Eblue, fill=Ecyan!12, rounded corners=6pt, minimum width=4.4cm, minimum height=1.7cm, font=\footnotesize, align=center, text width=4.2cm},
+  ext/.style={rectangle, draw=Eorange, fill=Eorange!10, rounded corners=6pt, minimum width=4.4cm, minimum height=1.7cm, font=\footnotesize, align=center, text width=4.2cm},
+  lbl/.style={font=\scriptsize, text=Egray, align=center}]
+\node[st] (tf) {\texttt{terraform apply}\\{\scriptsize remote state, org 3assasa}};
+\node[st, right=1.2cm of tf] (out) {\texttt{terraform output -json}\\{\scriptsize terraform\_outputs.json}};
+\node[st, right=1.2cm of out] (gen) {\texttt{generate\_inventory.py}\\{\scriptsize inventories/}\\{\scriptsize from\_terraform.yml}};
+\node[st, below=1.2cm of gen] (ans) {\texttt{ansible-playbook}\\{\scriptsize bootstrap / deploy / verify}};
+\node[ext, left=1.2cm of ans] (vault) {Ansible Vault\\{\scriptsize group\_vars/<env>/}\\{\scriptsize vault.yml}};
+\node[st, left=1.2cm of vault] (hosts) {Droplets\\{\scriptsize via bastion (ProxyJump)}};
+\draw[->, Eblue] (tf) -- (out);
+\draw[->, Eblue] (out) -- (gen);
+\draw[->, Eblue] (gen) -- node[lbl, right]{hosts, groups,\\ProxyJump} (ans);
+\draw[->, Eorange] (vault) -- node[lbl, above]{secrets} (ans);
+\draw[->, Eblue] (ans.south) -- ++(0,-0.9) -| node[lbl, pos=0.25, below]{SSH as \texttt{ansible} user} (hosts.south);
+\end{tikzpicture}
+\end{adjustbox}
+\caption{Integration of Terraform and Ansible: the inventory is generated from Terraform outputs, secrets come from a per-environment vault, and hosts are reached through the bastion}
+\label{fig:terraform-ansible-integration}
+\end{figure}

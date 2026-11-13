@@ -1,0 +1,52 @@
+\begin{figure}[htbp]
+\centering
+\begin{adjustbox}{max width=0.7\linewidth}
+\begin{tikzpicture}[>=latex, thick,
+  uc/.style={ellipse, draw=Eblue, fill=Ecyan!15, minimum width=5.4cm, minimum height=1.2cm, inner sep=0pt, text width=4.0cm, align=center, font=\small},
+  bound/.style={rectangle, draw=Egray, rounded corners=6pt},
+  incl/.style={->, dashed, Egray},
+  lbl/.style={font=\scriptsize, text=Egray, fill=white, inner sep=1pt}]
+\tikzset{actor/.pic={
+  \draw (0,0) circle (0.2);
+  \draw (0,-0.2) -- (0,-0.8);
+  \draw (-0.35,-0.45) -- (0.35,-0.45);
+  \draw (0,-0.8) -- (-0.3,-1.3);
+  \draw (0,-0.8) -- (0.3,-1.3);
+}}
+
+% ---- Application boundary (title inside, top-left) ----
+\node[bound, minimum width=14.2cm, minimum height=9.0cm, anchor=north west] (b1) at (2.6,7.8) {};
+\node[font=\small\bfseries, anchor=north west] at ([shift={(0.25,-0.2)}]b1.north west) {Delivery Tracker application};
+\node[uc] (dash) at (6.6,6.0) {View dashboard};
+\node[uc] (cli) at (6.6,4.6) {Manage clients};
+\node[uc] (drv) at (6.6,3.2) {Manage drivers};
+\node[uc] (log) at (6.6,1.8) {Manage transport logs};
+\node[uc] (api) at (6.6,0.4) {Consult API documentation};
+\node[uc] (login) at (13.4,3.9) {Log in (obtain JWT)};
+
+% ---- Delivery platform boundary ----
+\node[bound, minimum width=14.2cm, minimum height=5.6cm, anchor=north west] (b2) at (2.6,-2.0) {};
+\node[font=\small\bfseries, anchor=north west] at ([shift={(0.25,-0.2)}]b2.north west) {Delivery platform (infrastructure and pipeline)};
+\node[uc] (prov) at (6.6,-3.6) {Provision infrastructure};
+\node[uc] (conf) at (6.6,-5.0) {Configure and deploy servers};
+\node[uc] (pipe) at (6.6,-6.4) {Run CI/CD and security scans};
+
+% ---- Actors (label below each figure) ----
+\path (0.8,3.9) pic[Eblue] {actor};
+\node[font=\small, align=center, anchor=north] at (0.8,2.4) {Administrator /\\operator};
+\path (0.8,-4.3) pic[Eblue] {actor};
+\node[font=\small, align=center, anchor=north] at (0.8,-5.8) {DevOps\\engineer};
+
+% ---- Associations (from the actor's hands to each use case) ----
+\foreach \u in {dash,cli,drv,log,api}{\draw (1.15,3.45) -- (\u.west);}
+\foreach \u in {prov,conf,pipe}{\draw (1.15,-4.75) -- (\u.west);}
+
+% ---- Includes ----
+\foreach \u in {dash,cli,drv,log}{\draw[incl] (\u.east) -- (login.west);}
+\node[lbl, font=\footnotesize] at (10.1,5.3) {\guillemotleft include\guillemotright};
+
+\end{tikzpicture}
+\end{adjustbox}
+\caption{Use-case diagram of the Delivery Tracker application and its delivery platform}
+\label{fig:use-cases}
+\end{figure}

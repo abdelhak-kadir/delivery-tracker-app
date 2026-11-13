@@ -1,0 +1,39 @@
+\begin{figure}[htbp]
+\centering
+\begin{adjustbox}{max width=0.8\linewidth}
+\begin{tikzpicture}[
+    >=Latex, thick,
+    node distance=0.9cm,
+    every node/.style={font=\sffamily},
+    phase/.style={
+        rectangle, rounded corners=8pt,
+        draw=Eblue!80, fill=Ecyan!10,
+        minimum width=3.6cm, minimum height=1.3cm,
+        align=center, font=\small\bfseries
+    },
+    arrowstyle/.style={->, Eblue, thick}
+]
+
+% Nodes (two rows: left to right, then right to left)
+\node[phase] (code) {Code\\{\footnotesize\mdseries Spring Boot / React}};
+\node[phase, right=of code] (build) {Build\\{\footnotesize\mdseries Maven / npm}};
+\node[phase, right=of build] (scan) {Security Scans\\{\footnotesize\mdseries Gitleaks, Semgrep, Trivy}};
+\node[phase, right=of scan] (tf) {Infrastructure\\{\footnotesize\mdseries Terraform}};
+\node[phase, below=1.6cm of tf] (ansible) {Configuration\\{\footnotesize\mdseries Ansible Roles}};
+\node[phase, below=1.6cm of scan] (deploy) {Deploy\\{\footnotesize\mdseries Docker Compose}};
+\node[phase, below=1.6cm of code] (feedback) {Feedback\\{\footnotesize\mdseries CI reports}};
+
+% Arrows
+\draw[arrowstyle] (code) -- (build);
+\draw[arrowstyle] (build) -- (scan);
+\draw[arrowstyle] (scan) -- (tf);
+\draw[arrowstyle] (tf) -- (ansible);
+\draw[arrowstyle] (ansible) -- (deploy);
+\draw[arrowstyle] (deploy) -- (feedback);
+\draw[arrowstyle, dashed] (feedback.north) -- node[right,font=\footnotesize]{Continuous improvement} (code.south);
+
+\end{tikzpicture}
+\end{adjustbox}
+\caption{DevSecOps lifecycle applied in the Delivery Tracker project (the delivery stage is partly automated)}
+\label{fig:devsecops-lifecycle}
+\end{figure}

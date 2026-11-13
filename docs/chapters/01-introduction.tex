@@ -1,0 +1,95 @@
+%========================================================================================
+%   Chapter 1 – Host organization and project context
+%========================================================================================
+
+\chapter{Host Organization and Project Context}\label{chap:context}
+
+This chapter presents the host company, the problem that motivated the project, its objectives and scope, and the way the work was planned.
+
+\section{Host Organization: Youssra Trans-Négoce}
+
+Youssra Trans-Négoce is a limited liability company (\emph{SARL à associé unique}) with a registered capital of 100\,000 MAD, headquartered at 5 Bd Abdallah Ben Yassine, N\textdegree{} 5 Bis, 7\textsuperscript{th} floor, Casablanca, Morocco. It operates in national freight transport and logistics and provides distribution and delivery services for professional clients. According to the company, its activity covers national and intercity road freight transport, express courier services for parcels and documents, outsourced logistics and warehouse coordination, and delivery scheduling and fleet management for its clients. Its stated strengths are the reliability of its deliveries, a well-maintained vehicle fleet and nationwide coverage.
+
+The company reports a long-term collaboration with the Label'Vie group (Carrefour, Atacadão), a major Moroccan retail group: Youssra Trans-Négoce collects goods from regional warehouses and delivers them to retail outlets, in express, grouped or door-to-door modes. Its operational knowledge rests on its staff: a senior collaborator with more than 18 years of field experience and a logistics coordinator who has worked on national routes for three years.
+
+The company is organized around a small number of functions (Figure~\ref{fig:orgchart}): the management, which handles clients and contracts; an operations and dispatch function, which plans the trips and assigns the drivers; the drivers themselves; and an administration and accounting function, which follows the delivery notes, the advances given to drivers and the invoicing.
+
+\input{figures/fig1-5}
+
+%------------------------------------------------
+\section{Context and Problem Statement}
+
+For every trip, the activity of a transport company produces data that must be recorded accurately because it determines the cost and the price of the service. In our data model, a transport log contains the loading and unloading dates and locations, the destination, the delivery note, the advance given to the driver, the fuel quantity and price per liter, a variable charge and its price, the tariff applied to the client, the trip price, the operator and the commercial in charge; each log is linked to one client and one driver.
+
+Before the project, this information was kept in Excel spreadsheets filled in by the staff from the delivery notes brought back by the drivers. Spreadsheets are flexible, but here they have clear limits: each copy evolves on its own, the same client or driver may be typed differently from one sheet to another, there is no validation at entry, consolidating the trips of one client or driver requires manual work, and the files are protected neither by individual accounts nor by an access history. Replacing them with a web application raises a second question, which motivates the DevSecOps orientation of the project (Figure~\ref{fig:devsecops-lifecycle}): the application manipulates client identities, prices and tariffs, and is exposed on the Internet. Four concerns follow: \emph{data sensitivity} (records must be protected by authentication and access control), \emph{reliability} (logs validated at entry and stored consistently in a central database), \emph{reproducibility} (application, servers and network rules deployable the same way every time, without manual configuration) and \emph{consistency of delivery} (backend, frontend and infrastructure built, tested and checked by the same automated pipeline).
+
+\input{figures/fig1-4}
+
+%------------------------------------------------
+\section{Objectives of the Project}
+
+The general objective is to build a web application for the management of clients, drivers and transport logs, and to deliver it through a pipeline in which security checks and infrastructure automation are part of the normal workflow. The \emph{development objectives} are a full-stack application with a Spring Boot 3.5.6 backend (Java 21) and a React 19 frontend (MUI 7, React Router 7), a REST API documented with OpenAPI, persistence in PostgreSQL 16 through JPA/Hibernate, and automated tests with JUnit 5. The \emph{security objectives} are authentication with JSON Web Tokens and Spring Security, input validation, no secrets in the source code, and secret detection (Gitleaks), static analysis (Semgrep), dependency analysis (OWASP Dependency-Check) and container-image scanning (Trivy) in continuous integration. The \emph{deployment objectives} are packaging with Docker and Docker Compose, provisioning with Terraform, server configuration with Ansible, and automation of build, test and delivery with GitHub Actions.
+
+%------------------------------------------------
+\section{Scope and Limitations}
+
+The project covers the creation, consultation, update and deletion of clients, drivers and transport logs, authentication with JWT, the React user interface, the PostgreSQL schema and its validation rules, container packaging, infrastructure as code, and the continuous-integration pipeline with its security scans. Continuous delivery is only partly automated: the frontend delivery workflow is currently a placeholder, and the backend delivery workflow connects to the server over SSH to pull and start the new images with Docker Compose. The Ansible playbooks, which configure the servers and deploy the containers, were checked for syntax but were not run against real servers during the final revision of the code, and no dynamic application security testing was performed.
+
+Monitoring is limited. An Ansible role deploys the Prometheus node exporter on the servers, so that basic host metrics are available; complete monitoring and alerting dashboards, however, are out of scope. GPS tracking and geolocation, a mobile application, analytics dashboards, Kubernetes orchestration and multi-cloud deployment are also excluded.
+
+
+%------------------------------------------------
+\section{Project Planning}
+\label{sec:planning}
+
+The internship lasted one month and was carried out by a team of two students, so we organized the work in four weeks and overlapped the phases where the two members could work in parallel (Figure~\ref{fig:gantt}). The repository history spans a longer period than the internship, since the project was started and extended outside it; we therefore express the chart in weeks rather than calendar dates. The phases are inferred from the topics of the commits.
+
+\begin{figure}[htbp]
+\centering
+\begin{adjustbox}{max width=\linewidth}
+\begin{ganttchart}[
+    hgrid, vgrid={dotted},
+    x unit=1.4cm, y unit chart=0.7cm, y unit title=0.6cm,
+    title height=1, bar height=0.5,
+    bar/.append style={fill=Eblue!70},
+    title label font=\sffamily\small, bar label font=\sffamily\small,
+    group label font=\sffamily\small\bfseries
+]{1}{4}
+\gantttitle{Week 1}{1}
+\gantttitle{Week 2}{1}
+\gantttitle{Week 3}{1}
+\gantttitle{Week 4}{1} \\
+\ganttbar{Analysis and setup}{1}{1} \\
+\ganttbar{Backend (API, JWT, tests)}{1}{2} \\
+\ganttbar{Frontend (React)}{2}{3} \\
+\ganttbar{CI and security scans}{2}{3} \\
+\ganttbar{Terraform and Ansible}{3}{4} \\
+\ganttbar{Report writing}{3}{4}
+\end{ganttchart}
+\end{adjustbox}
+\caption{Project phases over the four weeks of the internship (indicative)}
+\label{fig:gantt}
+\end{figure}
+
+We worked iteratively, in short cycles that each produced something that could be built and tested. Each author developed on a dedicated feature branch (\texttt{features/back} for the backend and its infrastructure, \texttt{features/front} for the frontend), merged into \texttt{main} through pull requests so that the other author read the changes first. The phases of Figure~\ref{fig:gantt} therefore overlap: analysis and setup come first, then backend and frontend progress in parallel, and the pipelines, the infrastructure code and the report grow alongside them. We did not follow a formal framework such as Scrum; the cycles were driven by the features and by the security findings of the pipeline itself.
+
+\paragraph{Team roles.} The project was carried out by Ait Kadir Abdelhak and Oubella Ismail under the academic supervision of Mrs.\ Latifa Makhlouf. The areas of the repository changed by each author, as recorded in the Git history, are summarized in Table~\ref{tab:authors-areas}. The report itself was written jointly by both authors.
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.4cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Area} & \textbf{Oubella Ismail} & \textbf{Ait Kadir Abdelhak} \\
+\midrule
+Application & Backend (Spring Boot, security, tests) & Frontend (React, MUI) \\
+Containers & Docker Compose files & Frontend Dockerfile and nginx configuration, production Compose file \\
+Infrastructure & Terraform, Ansible & --- \\
+Pipelines & Backend CI, security scans, Terraform workflows (most workflows) & Frontend CI and CD workflows \\
+Report & \multicolumn{2}{c}{Written jointly} \\
+\bottomrule
+\end{tabularx}
+\caption{Areas of the repository changed by each author (from the Git history)}
+\label{tab:authors-areas}
+\end{table}

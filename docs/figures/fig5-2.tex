@@ -1,0 +1,38 @@
+\begin{figure}[H]
+\centering
+\begin{adjustbox}{max width=\linewidth}
+\begin{tikzpicture}[node distance=0.7cm, >=latex, thick, font=\small]
+
+\tikzstyle{stage}=[rectangle, draw=Eblue, fill=Ecyan!15, rounded corners=6pt, minimum width=2.5cm,
+                   minimum height=1.3cm, font=\small, align=center]
+\tikzstyle{partial}=[rectangle, draw=Eorange, fill=Eorange!15, rounded corners=6pt, minimum width=2.5cm,
+                   minimum height=1.3cm, font=\small, align=center]
+\tikzstyle{arrow}=[->, Eblue, thick]
+
+% --- Application lane ---
+\node[stage] (push) {\textbf{Push / pull}\\\textbf{request}};
+\node[stage, right=of push] (build) {\textbf{Build}\\{\scriptsize Maven / npm}};
+\node[stage, right=of build] (test) {\textbf{Test}\\{\scriptsize + Codecov (back)}};
+\node[stage, right=of test] (image) {\textbf{Image}\\{\scriptsize push to GHCR}};
+\node[stage, right=of image] (scan) {\textbf{Security}\\\textbf{scans}};
+\node[partial, right=of scan] (cd) {\textbf{Deploy}\\{\scriptsize partial}};
+\draw[arrow] (push)--(build); \draw[arrow] (build)--(test); \draw[arrow] (test)--(image);
+\draw[arrow] (image)--(scan); \draw[arrow] (scan)--(cd);
+\node[font=\scriptsize\itshape, anchor=south west] at ([yshift=0.2cm]push.north west) {Application workflows (\texttt{ci-back}, \texttt{ci-front}, \texttt{cd-*})};
+
+% --- Infrastructure lane ---
+\node[stage, below=1.7cm of push] (tpush) {\textbf{Push to \texttt{main}}\\{\scriptsize paths \texttt{infra/**}}};
+\node[stage, right=of tpush] (tscan) {\textbf{tfsec,}\\\textbf{Checkov}};
+\node[stage, right=of tscan] (plan) {\textbf{Terraform}\\\textbf{plan}};
+\node[stage, right=of plan] (opa) {\textbf{Conftest}\\\textbf{(OPA)}};
+\node[stage, right=of opa] (apply) {\textbf{Apply}\\{\scriptsize on \texttt{main}}};
+\node[stage, right=of apply] (drift) {\textbf{Weekly}\\\textbf{drift check}};
+\draw[arrow] (tpush)--(tscan); \draw[arrow] (tscan)--(plan); \draw[arrow] (plan)--(opa);
+\draw[arrow] (opa)--(apply); \draw[arrow] (apply)--(drift);
+\node[font=\scriptsize\itshape, anchor=south west] at ([yshift=0.2cm]tpush.north west) {Infrastructure workflow (\texttt{terraform.yaml}, \texttt{opa-policy-check.yaml})};
+
+\end{tikzpicture}
+\end{adjustbox}
+\caption{CI/CD structure as implemented: two application pipelines ending in a partially automated deployment, and one infrastructure pipeline. The orange stage marks the part of the chain that is not fully automated.}
+\label{fig:ci-cd-pipeline}
+\end{figure}

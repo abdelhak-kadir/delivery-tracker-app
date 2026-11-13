@@ -1,0 +1,25 @@
+%========================================================================================
+%   Chapter 10 --- Conclusion and Future Work
+%========================================================================================
+\chapter{Conclusion and Future Work}
+\label{chap:conclusion}
+
+\section{Summary of the Work}
+
+The objective of the internship was to build a delivery-tracking web application for a small transport company and to surround it with a DevSecOps pipeline. We delivered a Spring Boot 3.5.6 REST API on Java 21 with JWT authentication, a React 19 and MUI 7 frontend and a PostgreSQL 16 database, managing clients, drivers and transport logs. Around it we built multi-stage Docker images (353\,MB backend, 70.1\,MB frontend, both non-root) and Compose files, a Terraform module for DigitalOcean (bastion, frontend and backend servers, firewalls, managed PostgreSQL, DNS) with Rego policies checked by Conftest, twelve Ansible roles with an inventory generated from Terraform outputs, and reusable GitHub Actions workflows combining build, test and security analyses that publish SARIF reports.
+
+The evidence of Chapter~\ref{chap:results} shows 82 passing backend tests with 77.1\,\% line coverage, no Semgrep finding on the application code, unauthenticated access rejected with 401 and non-root containers. It also shows what is missing (Chapter~\ref{chap:discussion}): a single administrator account, report-only dependency auditing, partial continuous delivery, Terraform and Ansible code not validated end to end, and no monitoring beyond a node exporter. A review of our own implementation in the last days uncovered and corrected a number of defects (Chapter~\ref{chap:challenges}).
+
+\section{Future Work}
+
+Ordered by priority, derived from the limitations of Chapter~\ref{chap:discussion}:
+\begin{enumerate}
+  \item \textbf{Application security.} Replace the fixed account with a users table, hashed passwords and roles (administrator, operator) enforced by method-level authorization; move the token to an HttpOnly, SameSite cookie or to short-lived revocable tokens with refresh tokens; replace the placeholder frontend tests with component tests of the main pages; replace the example secret in \texttt{.env.example} and restrict the public health details.
+  \item \textbf{Pipeline.} Make \texttt{npm audit} and OWASP Dependency-Check blocking for critical findings, which requires replacing the unmaintained \texttt{react-scripts} (Vite is the most direct option); add an OWASP ZAP scan against staging; complete continuous delivery (a real frontend deployment job, promotion from staging to production with an explicit tag, and an approval step); make the jobs required status checks on \texttt{main} and require a reviewer for the \texttt{production} environment; first make the Terraform workflow succeed on the remote so that plan, policy checks and drift detection can be observed.
+  \item \textbf{Operations (medium term).} Run the Ansible playbooks end to end against staging, including the service-account migration, and check idempotence with a second run; then add Prometheus and Grafana dashboards, alert rules and centralized logs, move secrets to a secrets manager, and add a second backend instance behind a load balancer with a database standby.
+  \item \textbf{Long term.} Kubernetes with GitOps deployment could be considered if load or the number of services grew; at the present size its operational cost would exceed the benefit, and the preceding steps are prerequisites.
+\end{enumerate}
+
+\section{Personal Conclusion}
+
+This internship was our first experience of delivering an application together with the infrastructure and the checks that surround it. Writing the code was the smaller part of the work; most of the time went into making the pieces cooperate and into discovering, by testing them, that some of our own controls did not do what we believed. We leave with a working base, a clear list of what remains unproven, and a more careful habit: to verify a security measure by trying to defeat it. If we started again, we would write each module's tests with the module, configure the pipeline credentials and run the infrastructure code against a real account in the first weeks, and enable branch protection from the first commit, so that the checks are not merely visible but binding.

@@ -1,0 +1,19 @@
+# Command: docker run aquasec/trivy:0.56.2 fs|image --severity HIGH,CRITICAL (DB as downloaded on this date)
+# Date: 2026-11-06 00:14:07 +0000
+# Machine: macOS 26.7.2, Intel(R) Core(TM) i5-1038NG7 CPU @ 2.00GHz, 16 GB RAM, Docker Desktop
+# Commit: f5a0bd2 (+ uncommitted local changes)
+
+## Filesystem scan (vuln+misconfig; scan copy excluding .env/tfstate/tfvars/vault) (trivy-fs.json)
+  back/pom.xml [lang-pkgs/pom] vulns={'HIGH': 4} misconf={}
+  front/package-lock.json [lang-pkgs/npm] vulns={'HIGH': 102, 'CRITICAL': 3} misconf={}
+  back/Dockerfile [config/dockerfile] vulns={} misconf={}
+  infra [config/terraform] vulns={} misconf={}
+  infra/modules/stack/main.tf [config/terraform] vulns={} misconf={'CRITICAL': 16}
+  TOTAL vulns HIGH/CRITICAL: {'HIGH': 106, 'CRITICAL': 3}
+  vulnerable packages: {('org.postgresql:postgresql', '42.7.7', 'HIGH'): 2, ('org.springframework.boot:spring-boot-starter-actuator', '3.5.6', 'HIGH'): 2, ('@babel/plugin-transform-modules-systemjs', '7.27.1', 'HIGH'): 1, ('axios', '1.11.0', 'HIGH'): 12, ('body-parser', '1.20.3', 'HIGH'): 1, ('brace-expansion', '1.1.12', 'HIGH'): 5, ('brace-expansion', '2.0.2', 'HIGH'): 5, ('browserslist', '4.25.4', 'HIGH'): 2, ('compression', '1.8.1', 'HIGH'): 1, ('fast-uri', '3.1.0', 'HIGH'): 8, ('flatted', '3.3.3', 'HIGH'): 2, ('form-data', '3.0.4', 'HIGH'): 1, ('form-data', '4.0.4', 'HIGH'): 1, ('glob', '10.4.5', 'HIGH'): 1, ('js-yaml', '3.14.1', 'HIGH'): 3, ('js-yaml', '4.1.0', 'HIGH'): 3, ('jsonpath', '1.1.1', 'HIGH'): 1, ('launch-editor', '2.11.1', 'HIGH'): 1, ('lodash', '4.17.21', 'HIGH'): 1, ('minimatch', '3.1.2', 'HIGH'): 3, ('minimatch', '5.1.6', 'HIGH'): 3, ('minimatch', '9.0.5', 'HIGH'): 3, ('nanoid', '3.3.11', 'HIGH'): 3, ('node-forge', '1.3.1', 'HIGH'): 12, ('nth-check', '1.0.2', 'HIGH'): 1, ('path-to-regexp', '0.1.12', 'HIGH'): 1, ('picomatch', '2.3.1', 'HIGH'): 1, ('postcss', '7.0.39', 'HIGH'): 2, ('postcss', '8.5.6', 'HIGH'): 2, ('proxy-addr', '2.0.7', 'CRITICAL'): 1, ('react-router', '7.8.2', 'HIGH'): 8, ('rollup', '2.79.2', 'HIGH'): 1, ('serialize-javascript', '4.0.0', 'HIGH'): 1, ('serialize-javascript', '6.0.2', 'HIGH'): 1, ('shell-quote', '1.8.3', 'CRITICAL'): 1, ('shell-quote', '1.8.3', 'HIGH'): 1, ('source-map-js', '1.2.1', 'HIGH'): 1, ('svgo', '1.3.2', 'HIGH'): 2, ('svgo', '2.8.0', 'HIGH'): 3, ('underscore', '1.12.1', 'HIGH'): 1, ('webpack-dev-middleware', '5.3.4', 'HIGH'): 1, ('websocket-driver', '0.7.4', 'CRITICAL'): 1, ('ws', '7.5.10', 'HIGH'): 1, ('ws', '8.18.3', 'HIGH'): 1}
+## Image dtevidence-app (OS packages only; Java libs NOT scanned: Java DB 949MB download skipped) (trivy-image-app-os.json)
+  dtevidence-app (ubuntu 22.04) [os-pkgs/ubuntu] vulns={'HIGH': 2} misconf={}
+  TOTAL vulns HIGH/CRITICAL: {'HIGH': 2}
+## Image dtevidence-front (OS packages only) (trivy-image-front-os.json)
+  dtevidence-front (alpine 3.21.3) [os-pkgs/alpine] vulns={} misconf={}
+  TOTAL vulns HIGH/CRITICAL: 0

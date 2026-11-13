@@ -6,7 +6,13 @@ services:
     container_name: {{ app.name }}-frontend
     restart: unless-stopped
     ports:
-      - "{{ containers.frontend.port }}:80"
+      # Loopback only: the host nginx (nginx_tls role) owns 80/443 and proxies to this port
+      - "127.0.0.1:{{ containers.frontend.port }}:80"
+    # The image's nginx proxies /api to the host name "spring-boot-app"; resolve it to this env's backend
+    extra_hosts:
+{% for host in groups['backend'] | intersect(groups[env_name]) %}
+      - "spring-boot-app:{{ hostvars[host]['ansible_default_ipv4']['address'] }}"
+{% endfor %}
     environment:
       - API_URL=https://{{ domains.api }}
     deploy:

@@ -37,6 +37,9 @@ public class ClientServiceImpl implements ClientService {
         Client updated = clientRepo.findById(request.id()).orElseThrow(
                 () -> new ResourceNotFoundException("Client not found !")
         );
+        updated.setName(request.name());
+        updated.setIdentityId(request.identityId());
+
         updated =  clientRepo.save(updated);
         return clientMapper.toDto(updated);
     }
@@ -70,7 +73,7 @@ public class ClientServiceImpl implements ClientService {
     @Override
     public void delete(Long id){
         if(!clientRepo.existsById(id)){
-            throw new IllegalArgumentException("Client not found !");
+            throw new ResourceNotFoundException("Client not found !");
         }
 
         clientRepo.deleteById(id);

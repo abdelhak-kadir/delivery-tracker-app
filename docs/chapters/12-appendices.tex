@@ -1,0 +1,84 @@
+%========================================================================================
+%   Appendices
+%========================================================================================
+\chapter{Appendices}
+\section{Repository Structure}
+
+Listing~\ref{lst:app-tree} gives the annotated structure of the Git repository, limited to the directories tracked by Git (build outputs, \texttt{node\_modules} and local state files are ignored).
+
+\begin{lstlisting}[language=bash, basicstyle=\ttfamily\scriptsize, caption={Annotated repository tree (tracked directories only)}, label={lst:app-tree}]
+back/                      Spring Boot 3.5 REST API (Java 21, Maven wrapper)
+  Dockerfile               Multi-stage build, non-root user "app"
+  pom.xml                  Dependencies, JaCoCo plugin
+  start-local.sh           Loads .env and runs the "local" profile
+  src/main/java/com/delivery_tracker_app/app/
+    config/                Security, JWT filter and provider, CORS, OpenAPI, ApiPaths
+    controller/v1/         Auth, Client, Driver and TransportLog controllers
+    service/, serviceimpl/ Service interfaces and implementations
+    repository/            Spring Data JPA repositories
+    entity/                Client, Driver, TransportLog
+    dto/v1/                Request and response records
+    mapper/                Hand-written entity/DTO mappers
+    exception/             Error model and global exception handler
+  src/main/resources/      application.yaml, application-local.yml, application-docker.yml
+  src/test/                Unit, controller, repository and integration tests
+front/                     React 19 + MUI 7 single-page application
+  dockerfile, nginx.conf   Image build and static serving / reverse proxy
+  src/components/          Auth, Clients, Drivers, TransportLogs, Dashboard, Layout, Common
+  src/contexts/            AuthContext (token handling)
+  src/services/api.js      Axios instance (base URL, bearer token)
+docker/                    Compose files: local, back, default, prod
+infra/                     Terraform root module (main.tf, dns.tf, variables.tf, outputs.tf)
+  modules/stack/           One stack per environment (droplets, firewalls, database)
+  policy/                  Rego policies and security_test.rego (11 unit tests)
+ansible/                   Server configuration
+  playbooks/               bootstrap.yml, deploy.yml, migrate-to-ansible-user.yml
+  roles/                   common, ansible_user, ssh_hardening, firewall, fail2ban,
+                           docker_runtime, registry_login, nginx_tls, app_backend,
+                           app_frontend, observability, verify
+  group_vars/, inventories/ Variables per environment, generated inventory
+  scripts/                 generate_inventory.py (from Terraform outputs)
+.github/workflows/         ci-back, ci-front, security-scans, front-security-scan,
+                           terraform, opa-policy-check, cd-back, cd-front, openapi-docs
+docs/                      LaTeX sources of this report (chapters/, figures/, evidence/)
+.env.example               Template of the local environment variables
+.trivyignore               Time-boxed Trivy exceptions
+start.sh, stop.sh, restart-app.sh, prod.sh   Helper scripts around Docker Compose
+\end{lstlisting}
+
+\section{Environment Variables}
+
+Table~\ref{tab:envvars} lists the variables read by the application and its containers. The first group comes from \texttt{.env.example} and the Spring files \texttt{application*.yml}; the values shown are examples, and \texttt{<secret>} stands for a value that must never be committed.
+
+{\small
+\renewcommand{\arraystretch}{1.15}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.9cm} >{\raggedright\arraybackslash}p{5.2cm} >{\raggedright\arraybackslash}p{3.5cm}@{}}
+\caption{Environment variables}\label{tab:envvars}\\
+\toprule
+\textbf{Name} & \textbf{Purpose} & \textbf{Example} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Name} & \textbf{Purpose} & \textbf{Example} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+\texttt{POSTGRES\_\allowbreak DB} & Database name (database container and datasource URL) & \texttt{postgres} \\
+\texttt{POSTGRES\_\allowbreak USER} & Database user & \texttt{postgres} \\
+\texttt{POSTGRES\_\allowbreak PASSWORD} & Database password & \texttt{<secret>} \\
+\texttt{JWT\_\allowbreak SECRET} & Base64 key used to sign the tokens (256 bits, e.g.\ from \texttt{openssl rand -base64 32}) & \texttt{<secret>} \\
+\texttt{APP\_\allowbreak USER\_\allowbreak USERNAME} & Login of the single application account & \texttt{admin} \\
+\texttt{APP\_\allowbreak USER\_\allowbreak PASSWORD} & Password of the application account & \texttt{<secret>} \\
+\texttt{APP\_\allowbreak CORS\_\allowbreak ALLOWED\_\allowbreak ORIGINS} & Comma-separated origins accepted by CORS (default: the two local development origins) & \texttt{http:/\allowbreak /localhost:3000} \\
+\midrule
+\texttt{SPRING\_\allowbreak PROFILES\_\allowbreak ACTIVE} & Spring profile (\texttt{docker} in the containers, \texttt{local} for \texttt{start-local.sh}) & \texttt{docker} \\
+\texttt{SPRING\_\allowbreak DATASOURCE\_\allowbreak URL} & JDBC URL, set by Compose & \texttt{jdbc:postgresql:/\allowbreak /db:5432/\allowbreak postgres} \\
+\texttt{SPRING\_\allowbreak DATASOURCE\_\allowbreak USERNAME} & Datasource user, set by Compose from \texttt{POSTGRES\_\allowbreak USER} & \texttt{postgres} \\
+\texttt{SPRING\_\allowbreak DATASOURCE\_\allowbreak PASSWORD} & Datasource password, set by Compose & \texttt{<secret>} \\
+\texttt{SPRING\_\allowbreak JPA\_\allowbreak HIBERNATE\_\allowbreak DDL\_\allowbreak AUTO} & Schema management mode of Hibernate & \texttt{update} \\
+\texttt{REACT\_\allowbreak APP\_\allowbreak API\_\allowbreak URL} & Base URL of the API at frontend build time (default \texttt{/api/v1}) & \texttt{/api/v1} \\
+\end{longtable}
+}
+
+The workflows additionally use repository secrets, never stored in the repository: \texttt{DOCKERHUB\_\allowbreak USERNAME} and \texttt{DOCKERHUB\_\allowbreak TOKEN}, \texttt{CODECOV\_\allowbreak TOKEN}, \texttt{SEMGREP\_\allowbreak TOKEN}, \texttt{TF\_\allowbreak API\_\allowbreak TOKEN} (Terraform Cloud), and \texttt{DO\_\allowbreak VM\_\allowbreak HOST}, \texttt{DO\_\allowbreak VM\_\allowbreak USER} and \texttt{DO\_\allowbreak VM\_\allowbreak SSH\_\allowbreak KEY} for the SSH deployment. The default \texttt{GITHUB\_\allowbreak TOKEN} serves for Gitleaks and the GitHub Container Registry.
